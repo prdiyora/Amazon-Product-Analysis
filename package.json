@@ -3,9 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "vite",
+    "predev": "npm run package:extension",
+    "build": "vite build",
+    "prebuild": "npm run package:extension",
+    "preview": "vite preview",
+    "package:extension": "node scripts/package-extension.mjs",
     "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
-    "linkedom": "^0.18.12"
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.0.5",
+    "archiver": "^8.0.0",
+    "linkedom": "^0.18.12",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "lucide-react": "^1.30.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }

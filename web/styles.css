@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f4f7f3;
+  --color-ink: #12211d;
+  --color-muted: #60716a;
+  --color-line: #d7e1db;
+  --color-signal: #ff9900;
+  --color-data: #3165f5;
+  --color-mint: #d9f8e7;
+  --font-display: "Arial Narrow", "Aptos Display", "Segoe UI", sans-serif;
+  --font-sans: "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-mono: Consolas, "Courier New", monospace;
+}
+
+:root {
+  color: #12211d;
+  background: #f4f7f3;
+  font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.signal-scan::after {
+  position: absolute;
+  z-index: 20;
+  top: -15%;
+  left: -30%;
+  width: 38%;
+  height: 130%;
+  background: linear-gradient(90deg, transparent, rgb(49 101 245 / 9%), transparent);
+  content: "";
+  pointer-events: none;
+  transform: skewX(-10deg);
+  animation: signal-scan 4.8s ease-in-out infinite;
+}
+
+@keyframes signal-scan {
+  0%,
+  18% {
+    left: -45%;
+  }
+
+  72%,
+  100% {
+    left: 120%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

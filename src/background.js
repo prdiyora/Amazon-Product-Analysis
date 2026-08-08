@@ -3,6 +3,8 @@ importScripts("shared/messages.js", "shared/utils.js");
 const { messages, utils } = globalThis.AZScraper;
 const DEFAULT_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k/edit";
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbwqx6L8KfzN9ipamg-gW4_xzaawqmM_bDIG8o8rADTDqJ7zpBSp6hh_5b7_g90Xd00N/exec";
 const CONTENT_FILES = [
   "src/shared/messages.js",
   "src/shared/utils.js",
@@ -39,19 +41,6 @@ async function setState(patch) {
   return next;
 }
 
-function validateEndpoint(value) {
-  try {
-    const url = new URL(value);
-    return (
-      url.protocol === "https:" &&
-      url.hostname === "script.google.com" &&
-      /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname)
-    );
-  } catch {
-    return false;
-  }
-}
-
 function isAmazonPage(value, marketplace) {
   return (
     utils.getMarketplaceFromUrl(value) === marketplace &&
@@ -75,10 +64,6 @@ async function startRun() {
   }
 
   const settings = (await chrome.storage.local.get("settings")).settings || {};
-  if (!validateEndpoint(settings.endpoint)) {
-    throw new Error("Valid Apps Script Web App /exec endpoint save karo.");
-  }
-
   const marketplace = ["amazon.in", "amazon.com"].includes(settings.marketplace)
     ? settings.marketplace
     : "amazon.in";
@@ -249,16 +234,13 @@ function buildPayload(state, products) {
 
 async function uploadPayload(payload) {
   const settings = (await chrome.storage.local.get("settings")).settings || {};
-  if (!validateEndpoint(settings.endpoint)) {
-    throw new Error("Apps Script endpoint missing ke invalid chhe.");
-  }
   payload.token = settings.token || "";
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   let response;
   try {
-    response = await fetch(settings.endpoint, {
+    response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       redirect: "follow",
       signal: controller.signal,

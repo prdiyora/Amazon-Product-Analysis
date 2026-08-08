@@ -3,11 +3,11 @@
     "https://docs.google.com/spreadsheets/d/12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k/edit";
   const { messages } = globalThis.AZScraper;
   const marketplace = document.querySelector("#marketplace");
-  const endpoint = document.querySelector("#endpoint");
   const token = document.querySelector("#token");
   const phase = document.querySelector("#phase");
   const count = document.querySelector("#count");
   const progress = document.querySelector("#progress");
+  const statusCard = document.querySelector("#status-card");
   const message = document.querySelector("#message");
   const error = document.querySelector("#error");
   const summary = document.querySelector("#summary");
@@ -18,6 +18,7 @@
 
   function render(state) {
     const isBusy = ["running", "uploading"].includes(state.status);
+    statusCard.dataset.status = state.status || "idle";
     phase.textContent = String(state.phase || state.status || "ready")
       .replaceAll("_", " ")
       .replace(/\b\w/g, (character) => character.toUpperCase());
@@ -36,7 +37,6 @@
     summary.hidden = !stats || state.status !== "complete";
     start.disabled = isBusy;
     marketplace.disabled = isBusy;
-    endpoint.disabled = isBusy;
     token.disabled = isBusy;
     cancel.hidden = state.status !== "running";
     retry.hidden = state.status !== "upload_failed";
@@ -46,7 +46,6 @@
   async function saveSettings() {
     const settings = {
       marketplace: marketplace.value,
-      endpoint: endpoint.value.trim(),
       token: token.value
     };
     await chrome.storage.local.set({ settings });
@@ -95,7 +94,6 @@
     chrome.storage.local.get("settings"),
     chrome.runtime.sendMessage({ type: messages.GET_STATE })
   ]).then(([stored, response]) => {
-    endpoint.value = stored.settings?.endpoint || "";
     token.value = stored.settings?.token || "";
     marketplace.value = stored.settings?.marketplace || "amazon.in";
     render(response?.state || {});

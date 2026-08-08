@@ -18,7 +18,7 @@ Run timestamp, category URL/name, full category path, ASIN, title, brand, produc
 4. Optional security mate `Project Settings > Script Properties`ma `AZ_SCRAPER_TOKEN` property ane tamaro random token add karo.
 5. `Deploy > New deployment > Web app` select karo.
 6. `Execute as: Me` ane required access `Anyone` set kari deploy karo.
-7. Maleli `https://script.google.com/macros/s/.../exec` URL copy karo.
+7. Existing deployment URL extensionma fixed chhe. Deployment badlo to `src/background.js`ma `APPS_SCRIPT_URL` update karo.
 
 Apps Script India mate `Amazon Products IN` ane USA mate `Amazon Products USA` tabs automatic create karse. Web App URL private rakhvi. Shared token accidental writes ochha kare chhe, pan publicly distributed extension mate complete authentication nathi.
 
@@ -46,9 +46,9 @@ Code update karya pachi existing Apps Script deploymentma `Deploy > Manage deplo
 
 1. Popupma `Amazon India (.in)` ke `Amazon USA (.com)` select karo.
 2. Selected marketplace par category ke search listing open karo.
-3. Extension popupma Apps Script `/exec` URL paste karo.
+3. Connected Google Sheet destination popupma confirm karo.
 4. Script property set kari hoy to same shared token enter karo.
-5. `Start Scraping` dabavo.
+5. `Start analysis` dabavo.
 6. Popup close kari shakay; fari open karta current progress dekhase.
 
 Extension pagination follow kari 50 products collect karva try karse. Pages khuti jay to available products j upload thase. Product HTTP fetch blocked/incomplete hoy to extension ek temporary inactive tab open kari parse karse ane pote create karelo tab j close karse.
