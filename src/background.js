@@ -1,12 +1,13 @@
-importScripts("shared/messages.js", "shared/utils.js");
+importScripts("shared/messages.js", "shared/errors.js", "shared/utils.js");
 
-const { messages, utils } = globalThis.AZScraper;
+const { errors, messages, utils } = globalThis.AZScraper;
 const DEFAULT_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k/edit";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwwVrmMmowX26dTxUct-zJQDZZOma0INDScM7bbhP4vPLMvWS697mBgXwy0yHwShuRI/exec";
 const CONTENT_FILES = [
   "src/shared/messages.js",
+  "src/shared/errors.js",
   "src/shared/utils.js",
   "src/parsers/listing-parser.js",
   "src/parsers/product-parser.js",
@@ -19,6 +20,7 @@ const DEFAULT_STATE = Object.freeze({
   total: 50,
   message: "Selected Amazon marketplace ni category page open kari Start dabavo.",
   error: "",
+  errorDetails: null,
   runId: "",
   sourceTabId: null,
   marketplace: "amazon.in",
@@ -41,6 +43,31 @@ async function setState(patch) {
   return next;
 }
 
+async function setFailureState(error, options = {}) {
+  const errorDetails = errors.serialize(error, {
+    code: options.code,
+    stage: options.stage,
+    message: options.errorMessage
+  });
+  return setState({
+    status: options.status || "failed",
+    phase: options.phase || "failed",
+    message: options.message || "Analysis fail thayu.",
+    error: errorDetails.message,
+    errorDetails,
+    ...(options.patch || {})
+  });
+}
+
+function errorResponse(error, fallback = {}) {
+  const errorDetails = errors.serialize(error, fallback);
+  return {
+    ok: false,
+    error: errorDetails.message,
+    errorDetails
+  };
+}
+
 function isAmazonPage(value, marketplace) {
   return (
     utils.getMarketplaceFromUrl(value) === marketplace &&
@@ -52,15 +79,30 @@ async function sendToContent(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
   } catch {
-    await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_FILES });
-    return chrome.tabs.sendMessage(tabId, message);
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_FILES });
+      return await chrome.tabs.sendMessage(tabId, message);
+    } catch (error) {
+      throw errors.create(
+        `Amazon tab sathe extension connect na thai: ${error.message}`,
+        {
+          code: "CONTENT_SCRIPT_CONNECTION_FAILED",
+          stage: "setup",
+          hint: "Amazon page reload kari extension fari start karo."
+        }
+      );
+    }
   }
 }
 
 async function startRun() {
   const current = await getState();
   if (current.status === "running" || current.status === "uploading") {
-    throw new Error("Ek scraping run already chalu chhe.");
+    throw errors.create("Ek scraping run already chalu chhe.", {
+      code: "RUN_ALREADY_ACTIVE",
+      stage: "setup",
+      hint: "Current run complete karo athva Cancel dabavo."
+    });
   }
 
   const settings = (await chrome.storage.local.get("settings")).settings || {};
@@ -69,8 +111,13 @@ async function startRun() {
     : "amazon.in";
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !isAmazonPage(tab.url, marketplace)) {
-    throw new Error(
-      `Pehla selected ${marketplace} category ke search listing page open karo.`
+    throw errors.create(
+      `Pehla selected ${marketplace} category ke search listing page open karo.`,
+      {
+        code: "INVALID_AMAZON_TAB",
+        stage: "setup",
+        hint: `Active tab ${marketplace} listing/search page hovu joie.`
+      }
     );
   }
 
@@ -83,7 +130,8 @@ async function startRun() {
     runId,
     sourceTabId: tab.id,
     marketplace,
-    startedAt: new Date().toISOString()
+    startedAt: new Date().toISOString(),
+    errorDetails: null
   });
 
   try {
@@ -93,10 +141,19 @@ async function startRun() {
       limit: 50
     });
     if (!response?.ok) {
-      throw new Error(response?.error || "Amazon page scraper start na thayu.");
+      throw response?.errorDetails
+        ? errors.fromDetails(response.errorDetails)
+        : errors.create(response?.error || "Amazon page scraper start na thayu.", {
+            code: "SCRAPER_START_FAILED",
+            stage: "setup"
+          });
     }
   } catch (error) {
-    await setState({ status: "failed", phase: "failed", error: error.message });
+    await setFailureState(error, {
+      message: "Amazon page par analysis start na thayu.",
+      code: "SCRAPER_START_FAILED",
+      stage: "setup"
+    });
     throw error;
   }
 
@@ -121,7 +178,8 @@ async function cancelRun() {
     status: "canceled",
     phase: "canceled",
     message: "Scraping cancel thayu.",
-    error: ""
+    error: "",
+    errorDetails: null
   });
   const tabs = Array.from(fallbackTabs.get(state.runId) || []);
   await Promise.all(tabs.map((tabId) => chrome.tabs.remove(tabId).catch(() => undefined)));
@@ -146,11 +204,22 @@ function waitForTabComplete(tabId, timeoutMs = 30_000) {
     }
     function removedListener(removedTabId) {
       if (removedTabId === tabId) {
-        finish(new Error("Fallback product tab close thayu."));
+        finish(
+          errors.create("Fallback product tab close thayu.", {
+            code: "FALLBACK_TAB_CLOSED",
+            stage: "product_fallback"
+          })
+        );
       }
     }
     const timeout = setTimeout(() => {
-      finish(new Error("Fallback product tab load timeout."));
+      finish(
+        errors.create("Fallback product tab load timeout.", {
+          code: "FALLBACK_TAB_TIMEOUT",
+          stage: "product_fallback",
+          hint: "Amazon page manually open thai chhe ke CAPTCHA ave chhe te check karo."
+        })
+      );
     }, timeoutMs);
 
     chrome.tabs.onUpdated.addListener(updatedListener);
@@ -159,7 +228,14 @@ function waitForTabComplete(tabId, timeoutMs = 30_000) {
       if (tab.status === "complete") {
         finish();
       }
-    }).catch(() => finish(new Error("Fallback product tab available nathi.")));
+    }).catch(() =>
+      finish(
+        errors.create("Fallback product tab available nathi.", {
+          code: "FALLBACK_TAB_UNAVAILABLE",
+          stage: "product_fallback"
+        })
+      )
+    );
   });
 }
 
@@ -168,7 +244,10 @@ async function parseInFallbackTab(product, runId) {
   try {
     const state = await getState();
     if (state.status !== "running" || state.runId !== runId) {
-      throw new Error("Scraping run active nathi.");
+      throw errors.create("Scraping run active nathi.", {
+        code: "RUN_NOT_ACTIVE",
+        stage: "product_fallback"
+      });
     }
     tab = await chrome.tabs.create({ url: product.url, active: false });
     const runTabs = fallbackTabs.get(runId) || new Set();
@@ -176,7 +255,10 @@ async function parseInFallbackTab(product, runId) {
     fallbackTabs.set(runId, runTabs);
     const latestState = await getState();
     if (latestState.status !== "running" || latestState.runId !== runId) {
-      throw new Error("Scraping run cancel thayu.");
+      throw errors.create("Scraping run cancel thayu.", {
+        code: "RUN_CANCELED",
+        stage: "product_fallback"
+      });
     }
     await waitForTabComplete(tab.id);
     const response = await sendToContent(tab.id, {
@@ -184,7 +266,11 @@ async function parseInFallbackTab(product, runId) {
       expectedAsin: product.asin
     });
     if (!response?.ok) {
-      throw new Error("Fallback tab parse na thayu.");
+      throw errors.create("Fallback tab parse na thayu.", {
+        code: "FALLBACK_PARSE_FAILED",
+        stage: "product_fallback",
+        hint: "Amazon CAPTCHA/robot check hoy to browserma manually complete karo."
+      });
     }
     return response.product;
   } finally {
@@ -249,21 +335,84 @@ async function uploadPayload(payload) {
     });
   } catch (error) {
     if (error.name === "AbortError") {
-      throw new Error("Google Sheet upload 30 seconds pachi timeout thayu.");
+      throw errors.create("Google Sheet upload 30 seconds pachi timeout thayu.", {
+        code: "APPS_SCRIPT_TIMEOUT",
+        stage: "upload",
+        hint: "Internet check kari Retry upload dabavo."
+      });
     }
-    throw error;
+    throw errors.create(`Google Sheet request na thai: ${error.message}`, {
+      code: "APPS_SCRIPT_NETWORK_ERROR",
+      stage: "upload",
+      hint: "Internet connection ane Apps Script deployment check karo."
+    });
   } finally {
     clearTimeout(timeout);
   }
+
   const text = await response.text();
+  const responseHost = (() => {
+    try {
+      return new URL(response.url).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  const responseType = response.headers.get("content-type") || "";
   let result;
   try {
     result = JSON.parse(text);
   } catch {
-    throw new Error(`Apps Script invalid response aapyu (HTTP ${response.status}).`);
+    const requiresSignIn =
+      responseHost === "accounts.google.com" ||
+      /accounts\.google\.com|ServiceLogin|Sign in - Google Accounts/i.test(text);
+    if (requiresSignIn || [401, 403, 404].includes(response.status)) {
+      throw errors.create(
+        `Apps Script public JSON response na aapyu (HTTP ${response.status}).`,
+        {
+          code: "APPS_SCRIPT_NOT_PUBLIC",
+          stage: "upload",
+          httpStatus: response.status,
+          responseHost,
+          responseType,
+          hint:
+            'Apps Script deploymentma "Execute as: Me" ane "Who has access: Anyone" set karo.'
+        }
+      );
+    }
+    throw errors.create(
+      `Apps Script invalid response aapyu (HTTP ${response.status}).`,
+      {
+        code: "APPS_SCRIPT_INVALID_RESPONSE",
+        stage: "upload",
+        httpStatus: response.status,
+        responseHost,
+        responseType,
+        hint: "Deployment URL latest /exec URL chhe te check karo."
+      }
+    );
   }
+
   if (!response.ok || !result.ok) {
-    throw new Error(result.error || `Google Sheet upload HTTP ${response.status}`);
+    const message = result.error || `Google Sheet upload HTTP ${response.status}`;
+    const invalidToken = /invalid shared token/i.test(message);
+    const httpFailure = !response.ok;
+    throw errors.create(message, {
+      code: invalidToken
+        ? "INVALID_SHARED_TOKEN"
+        : httpFailure
+          ? "APPS_SCRIPT_HTTP_ERROR"
+          : "APPS_SCRIPT_REJECTED",
+      stage: "upload",
+      httpStatus: response.status,
+      responseHost,
+      responseType,
+      hint: invalidToken
+        ? "Popupma Apps Script property sathe same shared token enter karo."
+        : httpFailure
+          ? "Deployment URL/access ane Google service status check karo."
+          : "Apps Script execution log ane Sheet access check karo."
+    });
   }
   return result;
 }
@@ -275,7 +424,15 @@ function batchSummary(products, result) {
     updated: result.rowsUpdated || 0,
     failed: products.filter((product) => product.status !== "ok").length,
     missingPrice: products.filter((product) => !Number.isFinite(product.priceValue)).length,
-    missingBought: products.filter((product) => !Number.isFinite(product.boughtCount)).length
+    missingBought: products.filter((product) => !Number.isFinite(product.boughtCount)).length,
+    issues: products
+      .filter((product) => product.status !== "ok")
+      .slice(0, 8)
+      .map((product) => ({
+        asin: product.asin || "Unknown ASIN",
+        status: product.status || "incomplete",
+        error: product.error || "Product details incomplete."
+      }))
   };
 }
 
@@ -287,7 +444,8 @@ function mergeSummary(current, addition) {
     updated: (base.updated || 0) + addition.updated,
     failed: (base.failed || 0) + addition.failed,
     missingPrice: (base.missingPrice || 0) + addition.missingPrice,
-    missingBought: (base.missingBought || 0) + addition.missingBought
+    missingBought: (base.missingBought || 0) + addition.missingBought,
+    issues: [...(base.issues || []), ...(addition.issues || [])].slice(0, 8)
   };
 }
 
@@ -321,7 +479,8 @@ async function saveBatch(message, isFinal) {
     categoryName: message.categoryName,
     categoryPath: message.categoryPath,
     products,
-    error: ""
+    error: "",
+    errorDetails: null
   });
 
   try {
@@ -348,16 +507,19 @@ async function saveBatch(message, isFinal) {
         : `${summary.processed} products Sheetma safely save thaya.`,
       summary,
       sheetUrl,
-      products: []
+      products: [],
+      error: "",
+      errorDetails: null
     });
     return { result, summary, sheetUrl };
   } catch (error) {
-    await setState({
+    await setFailureState(error, {
       status: "upload_failed",
       phase: "upload_failed",
       message: "Progressive Sheet save fail thayu. Pending batch mate Retry Upload dabavo.",
-      error: error.message,
-      products
+      code: "SHEET_UPLOAD_FAILED",
+      stage: "upload",
+      patch: { products }
     });
     throw error;
   }
@@ -370,13 +532,17 @@ async function completeRun(message) {
 async function retryUpload() {
   const state = await getState();
   if (state.status !== "upload_failed" || !state.products?.length) {
-    throw new Error("Retry mate pending scraped data nathi.");
+    throw errors.create("Retry mate pending scraped data nathi.", {
+      code: "NO_PENDING_UPLOAD",
+      stage: "upload"
+    });
   }
   await setState({
     status: "uploading",
     phase: "upload",
     message: "Google Sheet upload fari try thai rahyu chhe...",
-    error: ""
+    error: "",
+    errorDetails: null
   });
   try {
     const result = await uploadPayload(buildPayload(state, state.products));
@@ -390,14 +556,17 @@ async function retryUpload() {
       message: summaryMessage(summary),
       summary,
       sheetUrl: resultSheetUrl(result, state.sheetUrl || ""),
-      products: []
+      products: [],
+      error: "",
+      errorDetails: null
     });
   } catch (error) {
-    await setState({
+    await setFailureState(error, {
       status: "upload_failed",
       phase: "upload_failed",
       message: "Sheet upload fari fail thayu.",
-      error: error.message
+      code: "SHEET_RETRY_FAILED",
+      stage: "upload"
     });
     throw error;
   }
@@ -412,23 +581,56 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === messages.GET_STATE) {
-    getState().then((state) => sendResponse({ ok: true, state }));
+    getState()
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch((error) =>
+        sendResponse(
+          errorResponse(error, {
+            code: "STATE_READ_FAILED",
+            stage: "extension_state"
+          })
+        )
+      );
     return true;
   }
   if (message.type === messages.START_RUN) {
     startRun()
       .then((state) => sendResponse({ ok: true, state }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch(async (error) => {
+        if (error.code !== "RUN_ALREADY_ACTIVE") {
+          await setFailureState(error, {
+            message: "Analysis start na thayu.",
+            code: "START_FAILED",
+            stage: "setup"
+          });
+        }
+        sendResponse(errorResponse(error, { code: "START_FAILED", stage: "setup" }));
+      });
     return true;
   }
   if (message.type === messages.CANCEL_RUN) {
-    cancelRun().then((state) => sendResponse({ ok: true, state }));
+    cancelRun()
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch((error) =>
+        sendResponse(
+          errorResponse(error, { code: "CANCEL_FAILED", stage: "cancel" })
+        )
+      );
     return true;
   }
   if (message.type === messages.RETRY_UPLOAD) {
     retryUpload()
       .then((state) => sendResponse({ ok: true, state }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch(async (error) => {
+        const state = await getState();
+        sendResponse({
+          ...errorResponse(error, {
+            code: "SHEET_RETRY_FAILED",
+            stage: "upload"
+          }),
+          state
+        });
+      });
     return true;
   }
   if (message.type === messages.SCRAPE_PROGRESS) {
@@ -445,13 +647,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         return state;
       })
       .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch((error) =>
+        sendResponse(
+          errorResponse(error, {
+            code: "PROGRESS_UPDATE_FAILED",
+            stage: "extension_state"
+          })
+        )
+      );
     return true;
   }
   if (message.type === messages.SCRAPE_BATCH) {
     saveBatch(message, false)
       .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch((error) =>
+        sendResponse(
+          errorResponse(error, { code: "SHEET_UPLOAD_FAILED", stage: "upload" })
+        )
+      );
     return true;
   }
   if (message.type === messages.SCRAPE_COMPLETE) {
@@ -460,38 +673,61 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .catch(async (error) => {
         const current = await getState();
         if (current.status !== "upload_failed") {
-          await setState({
-            status: "failed",
-            phase: "failed",
+          await setFailureState(error, {
             message: "Run finalize na thayu.",
-            error: error.message
+            code: "RUN_FINALIZE_FAILED",
+            stage: "finalize"
           });
         }
-        sendResponse({ ok: false, error: error.message });
+        sendResponse(
+          errorResponse(error, { code: "RUN_FINALIZE_FAILED", stage: "finalize" })
+        );
       });
     return true;
   }
   if (message.type === messages.SCRAPE_FAILED) {
     getState()
-      .then((state) => {
+      .then(async (state) => {
         if (state.runId === message.runId && state.status === "running") {
-          return setState({
-            status: message.canceled ? "canceled" : "failed",
-            phase: message.canceled ? "canceled" : "failed",
-            message: message.canceled ? "Scraping cancel thayu." : "Scraping fail thayu.",
-            error: message.canceled ? "" : message.error
+          if (message.canceled) {
+            return setState({
+              status: "canceled",
+              phase: "canceled",
+              message: "Scraping cancel thayu.",
+              error: "",
+              errorDetails: null
+            });
+          }
+          return setFailureState(message.errorDetails || message.error, {
+            message: "Scraping fail thayu.",
+            code: "SCRAPE_FAILED",
+            stage: "scrape"
           });
         }
         return state;
       })
       .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch((error) =>
+        sendResponse(
+          errorResponse(error, {
+            code: "SCRAPE_FAILURE_STATE_FAILED",
+            stage: "extension_state"
+          })
+        )
+      );
     return true;
   }
   if (message.type === messages.FALLBACK_PRODUCT) {
     parseInFallbackTab(message.product, message.runId)
       .then((product) => sendResponse({ ok: true, product }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+      .catch((error) =>
+        sendResponse(
+          errorResponse(error, {
+            code: "FALLBACK_PRODUCT_FAILED",
+            stage: "product_fallback"
+          })
+        )
+      );
     return true;
   }
   return false;
@@ -500,12 +736,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   getState().then((state) => {
     if (state.status === "running" && state.sourceTabId === tabId) {
-      setState({
-        status: "failed",
-        phase: "failed",
-        message: "Source Amazon tab close thai gayu.",
-        error: "Category tab open rakhi fari Start Scraping karo."
-      });
+      setFailureState(
+        errors.create("Category tab open rakhi fari Start analysis karo.", {
+          code: "SOURCE_TAB_CLOSED",
+          stage: "scrape",
+          hint: "Analysis complete thay tya sudhi source Amazon tab open rakho."
+        }),
+        {
+          message: "Source Amazon tab close thai gayu.",
+          code: "SOURCE_TAB_CLOSED",
+          stage: "scrape"
+        }
+      );
     }
   });
 });
@@ -516,12 +758,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
   getState().then((state) => {
     if (state.status === "running" && state.sourceTabId === tabId) {
-      setState({
-        status: "failed",
-        phase: "failed",
-        message: "Source Amazon tab navigate/refresh thayu.",
-        error: "Category page stable hoy tyare fari Start Scraping karo."
-      });
+      setFailureState(
+        errors.create("Source category page manually refresh/change thayu.", {
+          code: "SOURCE_PAGE_CHANGED",
+          stage: "scrape",
+          hint:
+            "Run darmiyan original category tab unchanged rakho. Extension pote product tabs open kare te normal chhe."
+        }),
+        {
+          message: "Source Amazon category page change thayu.",
+          code: "SOURCE_PAGE_CHANGED",
+          stage: "scrape"
+        }
+      );
     }
   });
 });

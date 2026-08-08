@@ -66,7 +66,36 @@
         </div>
         <progress id="progress" max="50" value="0"></progress>
         <p id="message">Selected Amazon marketplace ni category page open kari Start dabavo.</p>
-        <p id="error" hidden></p>
+        <section id="error-panel" hidden>
+          <div class="error-heading">
+            <strong>What went wrong</strong>
+            <code id="error-code">UNEXPECTED_ERROR</code>
+          </div>
+          <p id="error"></p>
+          <p id="error-hint" hidden></p>
+          <details id="error-details">
+            <summary>Technical details</summary>
+            <dl class="error-meta">
+              <div>
+                <dt>Stage</dt>
+                <dd id="error-stage">Unknown</dd>
+              </div>
+              <div>
+                <dt>HTTP</dt>
+                <dd id="error-http">-</dd>
+              </div>
+              <div>
+                <dt>Time</dt>
+                <dd id="error-time">-</dd>
+              </div>
+            </dl>
+            <button id="copy-error" type="button" class="copy-error">Copy diagnostics</button>
+          </details>
+        </section>
+        <section id="issue-panel" hidden>
+          <strong>Product issues</strong>
+          <ul id="issue-list"></ul>
+        </section>
         <p id="summary" hidden></p>
       </section>
 
@@ -95,6 +124,7 @@
     </main>
 
     <script src="shared/messages.js"></script>
+    <script src="shared/errors.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

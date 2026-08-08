@@ -64,6 +64,8 @@ Darek 10 completed products pachi progressive Sheet save thase. Run complete tha
 - CAPTCHA/robot check bypass nathi thatu. Eva case ma run stop/fail thai shake ane Amazon tabma manual verification karvu padse.
 - Logged-in account par automation mate zero-risk guarantee nathi. Separate Chrome profile/logged-out session, limited manual runs ane reasonable request volume safer chhe.
 - Scraping complete pan upload fail thay to popupma `Retry Upload` thi cached rows fari mokli shakay.
+- Fatal error ave to popup stage, error code, HTTP status, time ane suggested fix batavse. `Copy diagnostics` token/product payload vagar troubleshooting details copy karse.
+- Individual product parse/fetch issues popupma ASIN sathe batavse ane Sheetna `Status`/`Error` columnsma pan save thase.
 - Amazon terms ane applicable rules follow kari personal, reasonable-volume use karo.
 
 ## Tests

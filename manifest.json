@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Amazon Product Analysis",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Scrape up to 50 Amazon.in or Amazon.com category products and save sorted results to Google Sheets.",
   "permissions": [
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "https://www.amazon.in/*",
@@ -33,6 +34,7 @@
       ],
       "js": [
         "src/shared/messages.js",
+        "src/shared/errors.js",
         "src/shared/utils.js",
         "src/parsers/listing-parser.js",
         "src/parsers/product-parser.js",

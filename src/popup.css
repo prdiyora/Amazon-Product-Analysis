@@ -290,11 +290,130 @@ select {
 }
 
 #error {
-  border-radius: 6px;
-  padding: 7px 8px;
-  background: #fff0ef;
+  margin-top: 7px;
   color: #a52722;
   font-size: 10px;
+}
+
+#error-panel {
+  margin-top: 10px;
+  border: 1px solid #efc7c5;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff5f4;
+}
+
+.error-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #8f211d;
+  font-size: 10px;
+}
+
+#error-code {
+  border-radius: 4px;
+  padding: 3px 5px;
+  background: #f9d9d7;
+  color: #8f211d;
+  font-family: Consolas, monospace;
+  font-size: 8px;
+}
+
+#error-hint {
+  margin: 7px 0 0;
+  border-left: 2px solid #ff9900;
+  padding-left: 7px;
+  color: #5c4636;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+#error-details {
+  margin-top: 8px;
+  border-top: 1px solid #efcfcd;
+  padding-top: 7px;
+}
+
+#error-details summary {
+  color: #7f3935;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.error-meta {
+  display: grid;
+  grid-template-columns: 1fr 0.7fr 1.4fr;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.error-meta div {
+  min-width: 0;
+}
+
+.error-meta dt {
+  color: #9d6c68;
+  font-family: Consolas, monospace;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.error-meta dd {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: #5e2926;
+  font-family: Consolas, monospace;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.copy-error {
+  min-height: 28px;
+  border: 1px solid #dfaaa7;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: #fff;
+  color: #8f211d;
+  font-size: 9px;
+}
+
+#issue-panel {
+  margin-top: 10px;
+  border: 1px solid #ecd49f;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff9e9;
+  color: #6f4c09;
+  font-size: 9px;
+}
+
+#issue-list {
+  display: grid;
+  gap: 7px;
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+#issue-list li {
+  display: grid;
+  gap: 2px;
+  border-top: 1px solid #efdfb9;
+  padding-top: 7px;
+}
+
+#issue-list strong {
+  font-family: Consolas, monospace;
+  font-size: 8px;
+}
+
+#issue-list span {
+  line-height: 1.4;
 }
 
 #summary {

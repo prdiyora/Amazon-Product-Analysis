@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import packageInfo from "../package.json";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -14,6 +15,7 @@ import {
 
 const DOWNLOAD_PATH = "/downloads/amazon-product-analysis-extension.zip";
 const GITHUB_URL = "https://github.com/prdiyora/Amazon-Product-Analysis";
+const VERSION = packageInfo.version;
 
 const products = [
   { title: "Oil sprayer, 200 ml", bought: "10K+", reviews: "8,421", score: 96 },
@@ -224,7 +226,7 @@ export default function App() {
             </div>
 
             <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-              <span>Version 1.0.0</span>
+              <span>Version {VERSION}</span>
               <span className="size-1 rounded-full bg-signal" />
               <span>Manifest V3</span>
               <span className="size-1 rounded-full bg-signal" />
