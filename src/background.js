@@ -4,7 +4,7 @@ const { messages, utils } = globalThis.AZScraper;
 const DEFAULT_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k/edit";
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwqx6L8KfzN9ipamg-gW4_xzaawqmM_bDIG8o8rADTDqJ7zpBSp6hh_5b7_g90Xd00N/exec";
+  "https://script.google.com/macros/s/AKfycbwwVrmMmowX26dTxUct-zJQDZZOma0INDScM7bbhP4vPLMvWS697mBgXwy0yHwShuRI/exec";
 const CONTENT_FILES = [
   "src/shared/messages.js",
   "src/shared/utils.js",
