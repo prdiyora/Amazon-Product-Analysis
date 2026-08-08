@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Amazon Product Analysis",
+  "version": "1.0.0",
+  "description": "Scrape up to 50 Amazon.in or Amazon.com category products and save sorted results to Google Sheets.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.amazon.in/*",
+    "https://amazon.in/*",
+    "https://www.amazon.com/*",
+    "https://amazon.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "Amazon Product Analysis"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.amazon.in/*",
+        "https://amazon.in/*",
+        "https://www.amazon.com/*",
+        "https://amazon.com/*"
+      ],
+      "js": [
+        "src/shared/messages.js",
+        "src/shared/utils.js",
+        "src/parsers/listing-parser.js",
+        "src/parsers/product-parser.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

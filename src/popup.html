@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Scraper</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Amazon Scraper</h1>
+        <span class="limit">50 products</span>
+      </header>
+
+      <label for="marketplace">Amazon Marketplace</label>
+      <select id="marketplace">
+        <option value="amazon.in">Amazon India (.in)</option>
+        <option value="amazon.com">Amazon USA (.com)</option>
+      </select>
+
+      <label for="endpoint">Apps Script Web App URL</label>
+      <input id="endpoint" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+
+      <label for="token">Shared token <span>(optional)</span></label>
+      <input id="token" type="password" placeholder="Apps Script property sathe same token">
+
+      <section id="status-card" data-status="idle" aria-live="polite">
+        <div class="status-row">
+          <strong id="phase">Ready</strong>
+          <span id="count">0 / 50</span>
+        </div>
+        <progress id="progress" max="50" value="0"></progress>
+        <p id="message">Selected Amazon marketplace ni category page open kari Start dabavo.</p>
+        <p id="error" hidden></p>
+        <p id="summary" hidden></p>
+      </section>
+
+      <div class="actions">
+        <button id="start" type="button">Start Scraping</button>
+        <button id="open-sheet" type="button" class="secondary">Open Sheet</button>
+        <button id="cancel" type="button" class="secondary" hidden>Cancel</button>
+        <button id="retry" type="button" class="secondary" hidden>Retry Upload</button>
+      </div>
+    </main>
+
+    <script src="shared/messages.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
