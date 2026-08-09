@@ -100,11 +100,6 @@ function getTargetSpreadsheet_() {
 }
 
 function validatePayload_(payload) {
-  const expectedToken = PropertiesService.getScriptProperties()
-    .getProperty("AZ_SCRAPER_TOKEN");
-  if (expectedToken && payload.token !== expectedToken) {
-    throw new Error("Invalid shared token.");
-  }
   if (!Array.isArray(payload.products) || payload.products.length === 0) {
     throw new Error("Products payload missing chhe.");
   }
@@ -139,7 +134,7 @@ function validatePayload_(payload) {
 function validateAnalysisName_(value) {
   const name = String(value || "").replace(/\s+/g, " ").trim();
   if (!name) {
-    throw new Error("Analysis tab name required chhe.");
+    return "";
   }
   if (/[:\\/?*\[\]]/.test(name)) {
     throw new Error("Analysis name ma : \\ / ? * [ ] characters allowed nathi.");
@@ -154,8 +149,12 @@ function validateAnalysisName_(value) {
 }
 
 function analysisSheetName_(analysisName, marketplace) {
+  const validatedName = validateAnalysisName_(analysisName);
+  if (!validatedName) {
+    return DEFAULT_SHEET_NAMES[marketplace] || DEFAULT_SHEET_NAMES["amazon.in"];
+  }
   const suffix = marketplace === "amazon.com" ? "USA" : "IN";
-  return validateAnalysisName_(analysisName) + " - " + suffix;
+  return validatedName + " - " + suffix;
 }
 
 function writeProducts_(spreadsheet, products, analysisName) {

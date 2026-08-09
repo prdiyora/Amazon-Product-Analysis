@@ -494,7 +494,7 @@ test("Apps Script analysis name normalize ane validate kare chhe", () => {
     context.analysisSheetName_("Umbrella Analysis", "amazon.com"),
     "Umbrella Analysis - USA"
   );
-  assert.throws(() => context.validateAnalysisName_(""), /required/);
+  assert.equal(context.validateAnalysisName_(""), "");
   assert.throws(
     () => context.validateAnalysisName_("Invalid / Name"),
     /characters allowed nathi/
@@ -503,6 +503,27 @@ test("Apps Script analysis name normalize ane validate kare chhe", () => {
     () => context.validateAnalysisName_("x".repeat(95)),
     /maximum 94/
   );
+});
+
+test("blank analysis name selected marketplace default tab ma data lakhe chhe", () => {
+  const context = loadAppsScript();
+  const sheets = new Map();
+  const spreadsheet = {
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      sheets.set(name, sheet);
+      return sheet;
+    }
+  };
+
+  const result = writeProducts(context, spreadsheet, [
+    product("B000000001", "Default India product", 100)
+  ], "");
+
+  assert.equal(result.rowsAdded, 1);
+  assert.deepEqual(Array.from(sheets.keys()), ["Amazon Products IN"]);
+  assert.equal(sheets.get("Amazon Products IN").rows[1][5], "Default India product");
 });
 
 test("server product URLthi marketplace derive kare ane mismatch reject kare chhe", () => {

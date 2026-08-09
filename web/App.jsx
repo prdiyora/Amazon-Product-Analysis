@@ -37,7 +37,7 @@ const features = [
   {
     icon: FileSpreadsheet,
     title: "Name every analysis",
-    copy: "Route each topic into its own IN or USA tab while every user keeps a separate Google Sheet."
+    copy: "Use the default marketplace tab or optionally route a topic into its own named IN or USA tab."
   }
 ];
 
@@ -55,7 +55,7 @@ const steps = [
   {
     label: "Analyze",
     title: "Name and run your research",
-    copy: "Enter a tab name, choose Category, Brand, or Product mode, and start collecting."
+    copy: "Optionally enter a tab name, choose Category, Brand, or Product mode, and start collecting."
   }
 ];
 

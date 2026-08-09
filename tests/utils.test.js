@@ -13,7 +13,8 @@ const {
   isMatchingAmazonSearch,
   parseCompactCount,
   parseInteger,
-  validateAnalysisName
+  validateAnalysisName,
+  validateOptionalAnalysisName
 } = require("../src/shared/utils.js");
 
 test("India ane USA product URLs marketplace pramane canonical thay chhe", () => {
@@ -114,6 +115,20 @@ test("analysis name invalid input reject kare chhe", () => {
   assert.equal(
     buildAnalysisTabName("Invalid [Name]", "amazon.in"),
     ""
+  );
+});
+
+test("blank optional analysis name default marketplace tabs use kare chhe", () => {
+  assert.deepEqual(validateOptionalAnalysisName("   "), {
+    valid: true,
+    name: "",
+    isDefault: true
+  });
+  assert.equal(buildAnalysisTabName("", "amazon.in"), "Amazon Products IN");
+  assert.equal(buildAnalysisTabName("", "amazon.com"), "Amazon Products USA");
+  assert.equal(
+    validateOptionalAnalysisName("Invalid / Name").code,
+    "ANALYSIS_NAME_INVALID_CHARACTERS"
   );
 });
 

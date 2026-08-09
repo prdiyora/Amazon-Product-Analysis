@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Amazon Product Analysis",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Scrape up to 50 Amazon.in or Amazon.com category products and save sorted results to Google Sheets.",
   "permissions": [
     "storage",

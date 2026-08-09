@@ -16,7 +16,6 @@
   const endpoint = document.querySelector("#endpoint");
   const endpointField = document.querySelector(".endpoint-field");
   const endpointStatus = document.querySelector("#endpoint-status");
-  const token = document.querySelector("#token");
   const phase = document.querySelector("#phase");
   const count = document.querySelector("#count");
   const progress = document.querySelector("#progress");
@@ -55,17 +54,17 @@
   }
 
   function updateAnalysisNameStatus() {
-    const validation = utils.validateAnalysisName(analysisName.value);
+    const validation = utils.validateOptionalAnalysisName(analysisName.value);
     analysisNameField.dataset.valid = String(validation.valid);
     analysisNameStatus.textContent = validation.valid
-      ? "Ready"
-      : validation.code === "ANALYSIS_NAME_MISSING"
-        ? "Required"
-        : "Invalid";
+      ? validation.isDefault
+        ? "Default"
+        : "Ready"
+      : "Invalid";
     analysisName.title = validation.valid ? "" : validation.message;
     tabNamePreview.textContent = validation.valid
       ? utils.buildAnalysisTabName(validation.name, marketplace.value)
-      : `Analysis name - ${marketplace.value === "amazon.com" ? "USA" : "IN"}`;
+      : `Invalid name - ${marketplace.value === "amazon.com" ? "USA" : "IN"}`;
     tabNamePreview.title = tabNamePreview.textContent;
     return validation.valid;
   }
@@ -225,7 +224,6 @@
     openSearch.disabled = isBusy;
     analysisName.disabled = isBusy;
     endpoint.disabled = isBusy;
-    token.disabled = isBusy;
     cancel.hidden = state.status !== "running";
     retry.hidden = state.status !== "upload_failed";
     openSheet.hidden = false;
@@ -239,8 +237,7 @@
       analysisName: analysisName.value.trim(),
       sourceMode: selectedSourceMode(),
       searchQuery: searchQuery.value.trim(),
-      endpoint: endpoint.value.trim(),
-      token: token.value
+      endpoint: endpoint.value.trim()
     };
     await chrome.storage.local.set({ settings });
     return settings;
@@ -427,7 +424,6 @@
     chrome.runtime.sendMessage({ type: messages.GET_STATE })
   ]).then(([stored, response]) => {
     const settings = stored.settings || {};
-    token.value = settings.token || "";
     endpoint.value = settings.endpoint || "";
     analysisName.value = settings.analysisName || "";
     marketplace.value = settings.marketplace || "amazon.in";

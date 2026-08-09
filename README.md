@@ -12,7 +12,12 @@ Brand ane Product mode Amazon na keyword search results use kare chhe. Amazon re
 
 ## Dynamic analysis tabs
 
-Darek run pela user `Analysis tab name` aape chhe. Extension selected marketplace pramane suffix add kare chhe:
+`Analysis tab name` optional chhe. Blank hoy to selected marketplace nu default tab use thase:
+
+- India -> `Amazon Products IN`
+- USA -> `Amazon Products USA`
+
+Custom name aapo to extension selected marketplace pramane suffix add kare chhe:
 
 - `Umbrella Analysis` + India -> `Umbrella Analysis - IN`
 - `Umbrella Analysis` + USA -> `Umbrella Analysis - USA`
@@ -33,10 +38,9 @@ Run timestamp, category URL/name, full category path, ASIN, title, brand, produc
 2. Sheetma `Extensions > Apps Script` open karo.
 3. Default code delete kari `apps-script/Code.gs` nu code paste karo.
 4. Apps Script editorna function dropdownma `configureTargetSpreadsheet` select kari `Run` karo ane permissions allow karo. Aa current Sheet ID deployment mate save karse.
-5. Optional security mate `Project Settings > Script Properties`ma `AZ_SCRAPER_TOKEN` property ane tamaro random token add karo.
-6. `Deploy > New deployment > Web app` select karo.
-7. `Execute as: Me` ane access `Anyone` set kari deploy karo.
-8. Maleli `https://script.google.com/macros/s/.../exec` URL extension popupna `Apps Script Web App URL` fieldma paste karo.
+5. `Deploy > New deployment > Web app` select karo.
+6. `Execute as: Me` ane access `Anyone` set kari deploy karo.
+7. Maleli `https://script.google.com/macros/s/.../exec` URL extension popupna `Apps Script Web App URL` fieldma paste karo.
 
 Apps Script darek deploymentne `configureTargetSpreadsheet` vakhte active hati e Sheet sathe bind kare chhe. Etle alag userni alag Sheet ane alag `/exec` URL rahese. Setup vakhte fakt default `Amazon Products IN` tab banse. `Amazon Products USA` tab first USA run vakhte j banse. Custom named analysis run potana `Name - IN/USA` tabma j data lakhse.
 
@@ -57,8 +61,8 @@ Code update karya pachi existing Apps Script deploymentma `Deploy > Manage deplo
 ## 3. Scraping run
 
 1. Popupma `Amazon India (.in)` ke `Amazon USA (.com)` select karo.
-2. `Analysis tab name` enter karo ane live `- IN` / `- USA` tab preview check karo.
-3. Potani Apps Script `/exec` URL paste karo ane token set karyo hoy to same token enter karo.
+2. Optional `Analysis tab name` enter karo. Blank hoy to live preview default `Amazon Products IN/USA` batavse.
+3. Potani Apps Script `/exec` URL paste karo.
 4. `Category` mode mate Amazon category page open kari `Start analysis` dabavo.
 5. `Brand` athva `Product` mode mate keyword enter kari `Open Amazon search` dabavo.
 6. Amazon result page open thay pachi extension popup fari open kari `Start analysis` dabavo.
@@ -77,7 +81,7 @@ Darek 10 completed products pachi progressive save same named analysis tabma tha
 - CAPTCHA/robot check bypass nathi thatu. Eva case ma run stop/fail thai shake ane Amazon tabma manual verification karvu padse.
 - Logged-in account par automation mate zero-risk guarantee nathi. Separate Chrome profile/logged-out session, limited manual runs ane reasonable request volume safer chhe.
 - Scraping complete pan upload fail thay to popupma `Retry Upload` thi cached rows fari mokli shakay.
-- Fatal error ave to popup stage, error code, HTTP status, time ane suggested fix batavse. `Copy diagnostics` token/product payload vagar troubleshooting details copy karse.
+- Fatal error ave to popup stage, error code, HTTP status, time ane suggested fix batavse. `Copy diagnostics` sensitive payload vagar troubleshooting details copy karse.
 - Individual product parse/fetch issues popupma ASIN sathe batavse ane Sheetna `Status`/`Error` columnsma pan save thase.
 - Amazon terms ane applicable rules follow kari personal, reasonable-volume use karo.
 

@@ -79,10 +79,20 @@
     return { valid: true, name };
   }
 
+  function validateOptionalAnalysisName(value) {
+    const name = normalizeWhitespace(value);
+    return name ? validateAnalysisName(name) : { valid: true, name: "", isDefault: true };
+  }
+
   function buildAnalysisTabName(value, marketplace) {
-    const validation = validateAnalysisName(value);
+    const validation = validateOptionalAnalysisName(value);
     if (!validation.valid) {
       return "";
+    }
+    if (!validation.name) {
+      return marketplace === "amazon.com"
+        ? "Amazon Products USA"
+        : "Amazon Products IN";
     }
     const suffix = marketplace === "amazon.com" ? "USA" : "IN";
     return `${validation.name} - ${suffix}`;
@@ -90,7 +100,6 @@
 
   function buildUploadPayload(state, products, runTimestamp = new Date().toISOString()) {
     return {
-      token: state.token || "",
       runId: state.runId,
       runTimestamp,
       marketplace: state.marketplace,
@@ -249,7 +258,8 @@
     parseInteger,
     sleep,
     toAmazonUrl,
-    validateAnalysisName
+    validateAnalysisName,
+    validateOptionalAnalysisName
   };
 
   root.AZScraper = root.AZScraper || {};

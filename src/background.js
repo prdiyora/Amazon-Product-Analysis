@@ -138,7 +138,9 @@ async function startRun() {
     ? settings.marketplace
     : "amazon.in";
   const endpoint = String(settings.endpoint || "").trim();
-  const analysisValidation = utils.validateAnalysisName(settings.analysisName);
+  const analysisValidation = utils.validateOptionalAnalysisName(
+    settings.analysisName
+  );
   const sourceMode = getSourceMode(settings);
   const searchQuery = utils.normalizeWhitespace(settings.searchQuery);
 
@@ -160,7 +162,7 @@ async function startRun() {
     throw errors.create(analysisValidation.message, {
       code: analysisValidation.code,
       stage: "setup",
-      hint: "Popupma valid Analysis tab name enter karo."
+      hint: "Analysis tab name blank rakho athva valid custom name enter karo."
     });
   }
   if (sourceMode !== "category" && !searchQuery) {
@@ -380,8 +382,6 @@ async function uploadPayload(payload) {
       hint: "Tamari public Apps Script deployment ni /exec URL check karo."
     });
   }
-  payload.token = settings.token || "";
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   let response;
@@ -455,23 +455,18 @@ async function uploadPayload(payload) {
 
   if (!response.ok || !result.ok) {
     const message = result.error || `Google Sheet upload HTTP ${response.status}`;
-    const invalidToken = /invalid shared token/i.test(message);
     const httpFailure = !response.ok;
     throw errors.create(message, {
-      code: invalidToken
-        ? "INVALID_SHARED_TOKEN"
-        : httpFailure
-          ? "APPS_SCRIPT_HTTP_ERROR"
-          : "APPS_SCRIPT_REJECTED",
+      code: httpFailure
+        ? "APPS_SCRIPT_HTTP_ERROR"
+        : "APPS_SCRIPT_REJECTED",
       stage: "upload",
       httpStatus: response.status,
       responseHost,
       responseType,
-      hint: invalidToken
-        ? "Popupma Apps Script property sathe same shared token enter karo."
-        : httpFailure
-          ? "Deployment URL/access ane Google service status check karo."
-          : "Apps Script execution log ane Sheet access check karo."
+      hint: httpFailure
+        ? "Deployment URL/access ane Google service status check karo."
+        : "Apps Script execution log ane Sheet access check karo."
     });
   }
   return { ...result, endpoint };
