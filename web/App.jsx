@@ -88,11 +88,11 @@ const capabilityGroups = [
     label: "Organize",
     icon: Layers3,
     title: "Keep research clean as the Sheet grows",
-    copy: "Choose a topic tab or use the marketplace default. Repeated runs update matching products instead of creating noise.",
+    copy: "Choose a topic tab or use the marketplace default. Every new run appends a historical snapshot without removing previous rows.",
     points: [
       "Optional custom analysis tabs",
       "Separate IN and USA destinations",
-      "ASIN-based updates and new-row inserts",
+      "Previous runs preserved, including repeated ASINs",
       "Light row colors identify each run"
     ]
   },
@@ -668,9 +668,9 @@ export default function App() {
               </article>
               <article className="border-t-2 border-data pt-5">
                 <RefreshCw className="text-data" size={22} />
-                <h3 className="mt-4 font-display text-2xl font-bold tracking-[-0.04em]">No duplicate ASIN noise</h3>
+                <h3 className="mt-4 font-display text-2xl font-bold tracking-[-0.04em]">History without Retry duplicates</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Existing ASIN rows receive the latest product signals; genuinely new products append.
+                  New runs append snapshots—even for repeated ASINs—while retries inside one run update safely.
                 </p>
               </article>
               <article className="border-t-2 border-data pt-5">

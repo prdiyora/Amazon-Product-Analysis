@@ -18,9 +18,9 @@ Custom name aapo to extension selected marketplace pramane suffix add kare chhe:
 - `Umbrella Analysis` + India -> `Umbrella Analysis - IN`
 - `Umbrella Analysis` + USA -> `Umbrella Analysis - USA`
 
-Same analysis name fari use karsho to same ASIN latest data sathe update thase ane nava ASIN append thase. Custom analysis tabs default `Amazon Products IN/USA` tabs thi alag rahese.
+Same analysis name fari use karsho to nava run ni badhi product rows tabna endma append thase; same ASIN no previous run snapshot preserve rahese. Same runni progressive save ke Retry Upload duplicate banavvane badle existing run row update karse. Custom analysis tabs default `Amazon Products IN/USA` tabs thi alag rahese.
 
-Darek analysis run ni product rows ek consistent light background color use kare chhe. Next run bijo light color use karse, etle same tabma hundreds of sorted rows hoy to pan alag runs visually identify thai shake. Empty separator rows add nathi thata, etle sorting ane ASIN updates safe rahe chhe.
+Darek analysis run ni product rows ek consistent light background color use kare chhe. Runs chronological blocksma rahe chhe ane next run guaranteed next light color use karse. Darek runni andar products `Bought Count` highest ane tie par `Review Count` lowest pramane sort thase. Empty separator rows add nathi thata.
 
 ## Data columns
 
@@ -45,7 +45,7 @@ Apps Script darek deploymentne `configureTargetSpreadsheet` vakhte active hati e
 
 Apps Script existing `Amazon Products IN/USA`, custom analysis ane unrelated tabs/data delete ke rename kartu nathi. Requested custom tab pehla thi unrelated headers/data sathe exist karto hoy to overwrite karvane badle clear error aapse.
 
-Darek custom analysis tabma `ASIN` unique key chhe. Same product fari scrape thay to duplicate row add thavane badle existing row latest category, price, rating, review ane bought data sathe update thase. ASIN missing hoy to marketplace + product URL fallback unique key chhe.
+Darek runma `Run Timestamp + Marketplace + ASIN` unique key chhe. Etle upload Retry safe chhe, pan pachhina runma same ASIN ave to history mate navo snapshot row append thase. ASIN missing hoy to same run timestamp + marketplace + product URL fallback key chhe.
 
 Code update karya pachi existing Apps Script deploymentma `Deploy > Manage deployments > Edit > New version > Deploy` karvu jaruri chhe. Khali editor save karvathi old `/exec` deployment update nathi thatu.
 

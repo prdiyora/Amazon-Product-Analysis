@@ -129,7 +129,7 @@ function writeProducts(context, spreadsheet, products, analysisName = "Test Anal
   return context.writeProducts_(spreadsheet, products, analysisName);
 }
 
-test("Apps Script same ASIN update kare ane only new ASIN append kare chhe", () => {
+test("same run Retry ASIN update kare ane only new ASIN append kare chhe", () => {
   const context = loadAppsScript();
   const sheets = new Map();
   const spreadsheet = {
@@ -164,6 +164,38 @@ test("Apps Script same ASIN update kare ane only new ASIN append kare chhe", () 
   assert.equal(sheet.rows[1][5], "Latest title");
   assert.equal(sheet.rows[1][9], 150);
   assert.equal(sheets.get("Amazon Products IN").rows.length, 1);
+});
+
+test("next run same ASIN nu old snapshot preserve kari new row append kare chhe", () => {
+  const context = loadAppsScript();
+  const sheet = new FakeSheet();
+  const spreadsheet = {
+    getSheetByName: () => sheet,
+    insertSheet: () => sheet
+  };
+  const firstRun = product("B000000001", "Old snapshot", 100);
+  const secondRun = product("B000000001", "New snapshot", 150);
+  firstRun.runTimestamp = "2026-08-09T10:00:00.000Z";
+  secondRun.runTimestamp = "2026-08-09T11:00:00.000Z";
+
+  const first = writeProducts(context, spreadsheet, [firstRun]);
+  const second = writeProducts(context, spreadsheet, [secondRun]);
+
+  assert.deepEqual(
+    { rowsAdded: first.rowsAdded, rowsUpdated: first.rowsUpdated },
+    { rowsAdded: 1, rowsUpdated: 0 }
+  );
+  assert.deepEqual(
+    { rowsAdded: second.rowsAdded, rowsUpdated: second.rowsUpdated },
+    { rowsAdded: 1, rowsUpdated: 0 }
+  );
+  assert.deepEqual(
+    sheet.rows.slice(1).map((row) => [row[0], row[5], row[9]]),
+    [
+      ["2026-08-09T10:00:00.000Z", "Old snapshot", 100],
+      ["2026-08-09T11:00:00.000Z", "New snapshot", 150]
+    ]
+  );
 });
 
 test("same payloadma duplicate ASIN last value sathe ek j row banave chhe", () => {
@@ -230,7 +262,8 @@ test("same run ni rows same light color ane next run alag color use kare chhe", 
   const secondColor = sheet.backgrounds[rowByAsin.get(second.asin)][0];
   const thirdColor = sheet.backgrounds[rowByAsin.get(third.asin)][0];
   assert.equal(firstColor, secondColor);
-  assert.notEqual(firstColor, thirdColor);
+  assert.equal(firstColor, "#FFF4D6");
+  assert.equal(thirdColor, "#EAF2FF");
   assert.equal(sheet.backgrounds[rowByAsin.get(first.asin)].length, 18);
 });
 
@@ -334,13 +367,13 @@ test("existing old schema columns migrate thai ASIN update kare chhe", () => {
     product("B000000001", "Latest India title", 150)
   ], "Legacy Analysis");
 
-  assert.equal(result.rowsAdded, 0);
-  assert.equal(result.rowsUpdated, 1);
+  assert.equal(result.rowsAdded, 1);
+  assert.equal(result.rowsUpdated, 0);
   assert.equal(sheets.get("Legacy Analysis - IN").rows[0][3], "Category Path");
   assert.equal(sheets.get("Legacy Analysis - IN").rows[0][6], "Brand");
-  assert.equal(
-    sheets.get("Legacy Analysis - IN").rows[1][5],
-    "Latest India title"
+  assert.deepEqual(
+    sheets.get("Legacy Analysis - IN").rows.slice(1).map((row) => row[5]),
+    ["Latest India title", "Old title"]
   );
   assert.equal(sheets.get("Legacy Analysis - IN").rows[1][17], "amazon.in");
 });

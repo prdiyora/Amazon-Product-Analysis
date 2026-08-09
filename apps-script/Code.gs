@@ -308,11 +308,13 @@ function writeMarketplaceProducts_(
   const allRows = existingRows.concat(newRows);
   allRows.sort(compareProductRows_);
   if (allRows.length) {
+    const runColors = runColorMap_(allRows);
     const dataRange = sheet.getRange(2, 1, allRows.length, HEADERS.length);
     dataRange.setValues(allRows);
     dataRange.setBackgrounds(
       allRows.map(function(row) {
-        return Array(HEADERS.length).fill(runColor_(row[0]));
+        const color = runColors.get(String(row[0] || "")) || "#FFFFFF";
+        return Array(HEADERS.length).fill(color);
       })
     );
   }
@@ -327,13 +329,15 @@ function writeMarketplaceProducts_(
   };
 }
 
-function runColor_(runTimestamp) {
-  const value = String(runTimestamp || "");
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = ((hash * 31) + value.charCodeAt(index)) >>> 0;
-  }
-  return RUN_ROW_COLORS[hash % RUN_ROW_COLORS.length];
+function runColorMap_(rows) {
+  const timestamps = Array.from(new Set(rows.map(function(row) {
+    return String(row[0] || "");
+  }).filter(Boolean))).sort();
+  const colors = new Map();
+  timestamps.forEach(function(timestamp, index) {
+    colors.set(timestamp, RUN_ROW_COLORS[index % RUN_ROW_COLORS.length]);
+  });
+  return colors;
 }
 
 function sheetUrl_(spreadsheet, sheet) {
@@ -362,6 +366,12 @@ function marketplaceFromAmazonUrl_(value) {
 }
 
 function compareProductRows_(left, right) {
+  const leftRun = String(left[0] || "");
+  const rightRun = String(right[0] || "");
+  if (leftRun !== rightRun) {
+    return leftRun.localeCompare(rightRun);
+  }
+
   const leftBought = finiteNumberOr_(left[14], -1);
   const rightBought = finiteNumberOr_(right[14], -1);
   if (leftBought !== rightBought) {
@@ -381,13 +391,16 @@ function finiteNumberOr_(value, fallback) {
 }
 
 function productKey_(row) {
+  const runTimestamp = String(row[0] || "").trim();
   const marketplace = marketplaceForRow_(row);
   const asin = String(row[4] || "").trim().toUpperCase();
   if (asin) {
-    return marketplace + ":ASIN:" + asin;
+    return runTimestamp + ":" + marketplace + ":ASIN:" + asin;
   }
   const productUrl = String(row[7] || "").trim().toLowerCase();
-  return productUrl ? marketplace + ":URL:" + productUrl : "";
+  return productUrl
+    ? runTimestamp + ":" + marketplace + ":URL:" + productUrl
+    : "";
 }
 
 function marketplaceForRow_(row) {
