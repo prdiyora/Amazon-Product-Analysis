@@ -190,12 +190,82 @@ test("next run same ASIN nu old snapshot preserve kari new row append kare chhe"
     { rowsAdded: 1, rowsUpdated: 0 }
   );
   assert.deepEqual(
-    sheet.rows.slice(1).map((row) => [row[0], row[5], row[9]]),
+    sheet.rows
+      .slice(1)
+      .map((row) => [row[0], row[5], row[9]])
+      .sort((left, right) => left[0].localeCompare(right[0])),
     [
       ["2026-08-09T10:00:00.000Z", "Old snapshot", 100],
       ["2026-08-09T11:00:00.000Z", "New snapshot", 150]
     ]
   );
+});
+
+test("darek progressive batch pachi badha runs ni whole tab globally sort thay chhe", () => {
+  const context = loadAppsScript();
+  const sheet = new FakeSheet();
+  const spreadsheet = {
+    getSheetByName: () => sheet,
+    insertSheet: () => sheet
+  };
+  const firstRunHigh = product("B000000001", "First run high", 100, 1000, 50);
+  const firstRunLow = product("B000000002", "First run low", 100, 100, 2);
+  const secondRunHighest = product("B000000003", "Second run highest", 100, 5000, 900);
+  const secondRunMiddle = product("B000000004", "Second run middle", 100, 1000, 5);
+  firstRunHigh.runTimestamp = "2026-08-09T10:00:00.000Z";
+  firstRunLow.runTimestamp = firstRunHigh.runTimestamp;
+  secondRunHighest.runTimestamp = "2026-08-09T11:00:00.000Z";
+  secondRunMiddle.runTimestamp = secondRunHighest.runTimestamp;
+
+  writeProducts(context, spreadsheet, [firstRunHigh, firstRunLow]);
+  writeProducts(context, spreadsheet, [secondRunHighest, secondRunMiddle]);
+
+  assert.deepEqual(
+    sheet.rows.slice(1).map((row) => row[5]),
+    [
+      "Second run highest",
+      "Second run middle",
+      "First run high",
+      "First run low"
+    ]
+  );
+});
+
+test("manual helper badha analysis tabs sort kare pan unrelated tab touch nathi kartu", () => {
+  const context = loadAppsScript();
+  const sheets = new Map();
+  const writeSpreadsheet = {
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      sheets.set(name, sheet);
+      return sheet;
+    }
+  };
+  writeProducts(context, writeSpreadsheet, [
+    product("B000000001", "Low bought", 100, 100, 1),
+    product("B000000002", "High reviews", 100, 1000, 50),
+    product("B000000003", "Low reviews", 100, 1000, 5)
+  ], "");
+  const analysis = sheets.get("Amazon Products IN");
+  analysis.rows = [analysis.rows[0], ...analysis.rows.slice(1).reverse()];
+  const notes = new FakeSheet("Notes");
+  notes.rows = [["Keep"], ["this order"]];
+  const spreadsheet = {
+    getSheets: () => [analysis, notes]
+  };
+  context.SpreadsheetApp = {
+    getActiveSpreadsheet: () => spreadsheet
+  };
+
+  const result = context.sortAllAnalysisTabs();
+
+  assert.equal(result, "1 analysis tabs sorted.");
+  assert.deepEqual(
+    analysis.rows.slice(1).map((row) => row[5]),
+    ["Low reviews", "High reviews", "Low bought"]
+  );
+  assert.deepEqual(notes.rows, [["Keep"], ["this order"]]);
 });
 
 test("same payloadma duplicate ASIN last value sathe ek j row banave chhe", () => {
@@ -313,7 +383,7 @@ test("same ASIN India ane USA marketplace mate separate rows rahe chhe", () => {
   );
 });
 
-test("existing old schema columns migrate thai ASIN update kare chhe", () => {
+test("existing old schema migrate thai old row preserve ane new snapshot append kare chhe", () => {
   const context = loadAppsScript();
   const legacySheet = new FakeSheet();
   legacySheet.rows = [
@@ -373,9 +443,12 @@ test("existing old schema columns migrate thai ASIN update kare chhe", () => {
   assert.equal(sheets.get("Legacy Analysis - IN").rows[0][6], "Brand");
   assert.deepEqual(
     sheets.get("Legacy Analysis - IN").rows.slice(1).map((row) => row[5]),
-    ["Latest India title", "Old title"]
+    ["Old title", "Latest India title"]
   );
-  assert.equal(sheets.get("Legacy Analysis - IN").rows[1][17], "amazon.in");
+  const latestRow = sheets
+    .get("Legacy Analysis - IN")
+    .rows.find((row) => row[5] === "Latest India title");
+  assert.equal(latestRow[17], "amazon.in");
 });
 
 test("new configuration default IN banave pan USA ke unrelated tab touch nathi kartu", () => {

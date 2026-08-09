@@ -61,6 +61,26 @@ function configureTargetSpreadsheet() {
   return "Target Sheet connected: " + spreadsheet.getName();
 }
 
+function sortAllAnalysisTabs() {
+  const spreadsheet =
+    SpreadsheetApp.getActiveSpreadsheet() || getTargetSpreadsheet_();
+  let sortedTabs = 0;
+  spreadsheet.getSheets().forEach(function(sheet) {
+    if (!hasCurrentAnalysisHeaders_(sheet)) {
+      return;
+    }
+    const rowCount = Math.max(sheet.getLastRow() - 1, 0);
+    if (rowCount) {
+      const rows = sheet
+        .getRange(2, 1, rowCount, HEADERS.length)
+        .getValues();
+      writeSortedRows_(sheet, rows);
+    }
+    sortedTabs += 1;
+  });
+  return sortedTabs + " analysis tabs sorted.";
+}
+
 function doPost(event) {
   const lock = LockService.getScriptLock();
   try {
@@ -306,18 +326,7 @@ function writeMarketplaceProducts_(
   });
 
   const allRows = existingRows.concat(newRows);
-  allRows.sort(compareProductRows_);
-  if (allRows.length) {
-    const runColors = runColorMap_(allRows);
-    const dataRange = sheet.getRange(2, 1, allRows.length, HEADERS.length);
-    dataRange.setValues(allRows);
-    dataRange.setBackgrounds(
-      allRows.map(function(row) {
-        const color = runColors.get(String(row[0] || "")) || "#FFFFFF";
-        return Array(HEADERS.length).fill(color);
-      })
-    );
-  }
+  writeSortedRows_(sheet, allRows);
   return {
     rowsAdded: newRows.length,
     rowsUpdated: rowsUpdated,
@@ -327,6 +336,22 @@ function writeMarketplaceProducts_(
     sheetGid:
       typeof sheet.getSheetId === "function" ? String(sheet.getSheetId()) : ""
   };
+}
+
+function writeSortedRows_(sheet, rows) {
+  if (!rows.length) {
+    return;
+  }
+  rows.sort(compareProductRows_);
+  const runColors = runColorMap_(rows);
+  const dataRange = sheet.getRange(2, 1, rows.length, HEADERS.length);
+  dataRange.setValues(rows);
+  dataRange.setBackgrounds(
+    rows.map(function(row) {
+      const color = runColors.get(String(row[0] || "")) || "#FFFFFF";
+      return Array(HEADERS.length).fill(color);
+    })
+  );
 }
 
 function runColorMap_(rows) {
@@ -366,12 +391,6 @@ function marketplaceFromAmazonUrl_(value) {
 }
 
 function compareProductRows_(left, right) {
-  const leftRun = String(left[0] || "");
-  const rightRun = String(right[0] || "");
-  if (leftRun !== rightRun) {
-    return leftRun.localeCompare(rightRun);
-  }
-
   const leftBought = finiteNumberOr_(left[14], -1);
   const rightBought = finiteNumberOr_(right[14], -1);
   if (leftBought !== rightBought) {
@@ -457,6 +476,21 @@ function ensureHeaders_(sheet, headers) {
   }
 
   throwSchemaConflict_(sheet, "compatible analysis headers nathi");
+}
+
+function hasCurrentAnalysisHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    return false;
+  }
+  const currentHeaders = sheet
+    .getRange(1, 1, 1, HEADERS.length)
+    .getValues()[0];
+  return (
+    HEADERS.every(function(header, index) {
+      return currentHeaders[index] === header;
+    }) &&
+    !hasPopulatedColumnsAfter_(sheet, HEADERS.length)
+  );
 }
 
 function hasPopulatedColumnsAfter_(sheet, columnCount) {

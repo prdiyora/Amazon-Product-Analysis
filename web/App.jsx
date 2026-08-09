@@ -93,7 +93,7 @@ const capabilityGroups = [
       "Optional custom analysis tabs",
       "Separate IN and USA destinations",
       "Previous runs preserved, including repeated ASINs",
-      "Light row colors identify each run"
+      "Light row colors identify each run after global sorting"
     ]
   },
   {
@@ -663,7 +663,7 @@ export default function App() {
                 <ListFilter className="text-data" size={22} />
                 <h3 className="mt-4 font-display text-2xl font-bold tracking-[-0.04em]">Demand-first sorting</h3>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Bought count sorts highest first; lower review competition breaks ties.
+                  Every progressive save re-sorts the whole tab: bought count highest first, then lower reviews for ties.
                 </p>
               </article>
               <article className="border-t-2 border-data pt-5">

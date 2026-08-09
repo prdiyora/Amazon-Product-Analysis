@@ -20,7 +20,7 @@ Custom name aapo to extension selected marketplace pramane suffix add kare chhe:
 
 Same analysis name fari use karsho to nava run ni badhi product rows tabna endma append thase; same ASIN no previous run snapshot preserve rahese. Same runni progressive save ke Retry Upload duplicate banavvane badle existing run row update karse. Custom analysis tabs default `Amazon Products IN/USA` tabs thi alag rahese.
 
-Darek analysis run ni product rows ek consistent light background color use kare chhe. Runs chronological blocksma rahe chhe ane next run guaranteed next light color use karse. Darek runni andar products `Bought Count` highest ane tie par `Review Count` lowest pramane sort thase. Empty separator rows add nathi thata.
+Darek analysis run ni product rows ek consistent light background color use kare chhe ane next run guaranteed next light color use karse. Darek 10-product progressive save pachi selected tabni badhi old + new rows `Bought Count` highest ane tie par `Review Count` lowest pramane globally re-sort thase. Etle final Sheetma only latest 10 nahi, badhi rows par same sorting apply thase.
 
 ## Data columns
 
@@ -48,6 +48,8 @@ Apps Script existing `Amazon Products IN/USA`, custom analysis ane unrelated tab
 Darek runma `Run Timestamp + Marketplace + ASIN` unique key chhe. Etle upload Retry safe chhe, pan pachhina runma same ASIN ave to history mate navo snapshot row append thase. ASIN missing hoy to same run timestamp + marketplace + product URL fallback key chhe.
 
 Code update karya pachi existing Apps Script deploymentma `Deploy > Manage deployments > Edit > New version > Deploy` karvu jaruri chhe. Khali editor save karvathi old `/exec` deployment update nathi thatu.
+
+Existing badha default/custom analysis tabs ne immediately full sort karva Apps Script editorna function dropdownma `sortAllAnalysisTabs` select kari `Run` karo. Aa only exact analysis headers vala tabs ne sort/color kare chhe; unrelated tabs untouched rahese. Pachhina extension uploads darek 10-row batch pachi selected tabne automatic full sort karse.
 
 ## 2. Extension install
 
