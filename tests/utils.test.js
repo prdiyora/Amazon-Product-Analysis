@@ -3,14 +3,11 @@ const assert = require("node:assert/strict");
 const {
   ANALYSIS_NAME_MAX_LENGTH,
   buildAnalysisTabName,
-  buildAmazonSearchUrl,
   buildUploadPayload,
   canonicalProductUrl,
   compareProducts,
-  getAmazonSearchQuery,
   getMarketplaceFromUrl,
   isAppsScriptEndpoint,
-  isMatchingAmazonSearch,
   parseCompactCount,
   parseInteger,
   validateAnalysisName,
@@ -52,27 +49,6 @@ test("products bought descending ane tie par reviews ascending sort thay chhe", 
 
   products.sort(compareProducts);
   assert.deepEqual(products.map((product) => product.asin), ["A", "C", "B", "D"]);
-});
-
-test("brand ane product keyword mate marketplace search URL bane chhe", () => {
-  assert.equal(
-    buildAmazonSearchUrl("amazon.in", "  Sellbotic  "),
-    "https://www.amazon.in/s?k=Sellbotic"
-  );
-  assert.equal(
-    buildAmazonSearchUrl("amazon.com", "oil sprayer"),
-    "https://www.amazon.com/s?k=oil+sprayer"
-  );
-  assert.equal(buildAmazonSearchUrl("amazon.in", "   "), "");
-});
-
-test("Amazon search URL query read ane match thay chhe", () => {
-  const url =
-    "https://www.amazon.in/s?k=sellbotic&crid=2JTR50P5YDIN6&ref=nb_sb_noss_2";
-  assert.equal(getAmazonSearchQuery(url), "sellbotic");
-  assert.equal(isMatchingAmazonSearch(url, "amazon.in", "Sellbotic"), true);
-  assert.equal(isMatchingAmazonSearch(url, "amazon.com", "Sellbotic"), false);
-  assert.equal(isMatchingAmazonSearch("https://www.amazon.in/dp/B000000001", "amazon.in", "Sellbotic"), false);
 });
 
 test("Apps Script exec endpoint validate thay chhe", () => {
@@ -138,8 +114,8 @@ test("progressive ane retry payload run nu locked analysis name preserve kare ch
     marketplace: "amazon.in",
     analysisName: "Umbrella Analysis",
     categoryUrl: "https://www.amazon.in/s?k=umbrella",
-    categoryName: "Product search: umbrella",
-    categoryPath: "Product search > umbrella"
+    categoryName: "Umbrella",
+    categoryPath: "Home & Kitchen > Umbrella"
   };
   const products = [{
     asin: "B000000001",

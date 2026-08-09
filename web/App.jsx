@@ -26,8 +26,8 @@ const products = [
 const features = [
   {
     icon: ScanSearch,
-    title: "Choose your research path",
-    copy: "Analyze a category page, search a brand name, or search a product term on Amazon India or USA."
+    title: "Analyze the page you chose",
+    copy: "Search or filter directly on Amazon India or USA, then collect the current result page without repeating the query."
   },
   {
     icon: ListFilter,
@@ -54,8 +54,8 @@ const steps = [
   },
   {
     label: "Analyze",
-    title: "Name and run your research",
-    copy: "Optionally enter a tab name, choose Category, Brand, or Product mode, and start collecting."
+    title: "Open Amazon and start",
+    copy: "Open your category or search results, optionally name the Sheet tab, and start collecting."
   }
 ];
 
@@ -217,8 +217,8 @@ export default function App() {
             </h1>
 
             <p className="mt-10 max-w-xl text-lg leading-8 text-muted sm:text-xl">
-              Research categories, brands, or product terms. Compare up to 50 non-sponsored
-              listings and save every topic in its own named Google Sheet tab.
+              Search and filter directly on Amazon, then compare up to 50 non-sponsored listings
+              from the current page and save every topic in its own Google Sheet tab.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-5">

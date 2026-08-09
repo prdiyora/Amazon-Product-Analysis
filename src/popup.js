@@ -1,18 +1,10 @@
 (function initPopup() {
   const { errors, messages, utils } = globalThis.AZScraper;
-  const sourceModes = Array.from(
-    document.querySelectorAll("input[name='source-mode']")
-  );
   const marketplace = document.querySelector("#marketplace");
   const analysisName = document.querySelector("#analysis-name");
   const analysisNameField = document.querySelector(".analysis-name-field");
   const analysisNameStatus = document.querySelector("#analysis-name-status");
   const tabNamePreview = document.querySelector("#tab-name-preview");
-  const searchWorkflow = document.querySelector("#search-workflow");
-  const searchLabel = document.querySelector("#search-label");
-  const searchQuery = document.querySelector("#search-query");
-  const openSearch = document.querySelector("#open-search");
-  const modeInstruction = document.querySelector("#mode-instruction");
   const endpoint = document.querySelector("#endpoint");
   const endpointField = document.querySelector(".endpoint-field");
   const endpointStatus = document.querySelector("#endpoint-status");
@@ -33,17 +25,12 @@
   const issueList = document.querySelector("#issue-list");
   const summary = document.querySelector("#summary");
   const start = document.querySelector("#start");
-  const startStep = document.querySelector("#start-step");
   const openSheet = document.querySelector("#open-sheet");
   const cancel = document.querySelector("#cancel");
   const retry = document.querySelector("#retry");
   let diagnosticsText = "";
   let lastState = {};
   analysisName.maxLength = utils.ANALYSIS_NAME_MAX_LENGTH;
-
-  function selectedSourceMode() {
-    return sourceModes.find((input) => input.checked)?.value || "category";
-  }
 
   function updateEndpointStatus() {
     const value = endpoint.value.trim();
@@ -73,21 +60,6 @@
     const isBusy = ["running", "uploading"].includes(state.status);
     start.disabled =
       isBusy || !updateEndpointStatus() || !updateAnalysisNameStatus();
-  }
-
-  function renderSourceMode() {
-    const sourceMode = selectedSourceMode();
-    const isSearch = sourceMode !== "category";
-    searchWorkflow.hidden = !isSearch;
-    startStep.hidden = !isSearch;
-    searchLabel.textContent =
-      sourceMode === "brand" ? "Brand name" : "Product search term";
-    searchQuery.placeholder =
-      sourceMode === "brand" ? "e.g. Sellbotic" : "e.g. oil sprayer";
-    modeInstruction.textContent =
-      sourceMode === "category"
-        ? "Open an Amazon category page, then start a focused product scan."
-        : `Enter a ${sourceMode === "brand" ? "brand name" : "product term"}, open Amazon results, then run the analysis.`;
   }
 
   function updateOpenSheetAvailability(state = lastState) {
@@ -217,11 +189,6 @@
     });
     issuePanel.hidden = issues.length === 0;
     marketplace.disabled = isBusy;
-    sourceModes.forEach((input) => {
-      input.disabled = isBusy;
-    });
-    searchQuery.disabled = isBusy;
-    openSearch.disabled = isBusy;
     analysisName.disabled = isBusy;
     endpoint.disabled = isBusy;
     cancel.hidden = state.status !== "running";
@@ -235,8 +202,6 @@
     const settings = {
       marketplace: marketplace.value,
       analysisName: analysisName.value.trim(),
-      sourceMode: selectedSourceMode(),
-      searchQuery: searchQuery.value.trim(),
       endpoint: endpoint.value.trim()
     };
     await chrome.storage.local.set({ settings });
@@ -287,31 +252,6 @@
     }
     render(response.state);
   }
-
-  openSearch.addEventListener("click", async () => {
-    try {
-      const sourceMode = selectedSourceMode();
-      const query = searchQuery.value.trim();
-      const searchUrl = utils.buildAmazonSearchUrl(marketplace.value, query);
-      if (sourceMode === "category" || !searchUrl) {
-        throw errors.create("Search keyword required chhe.", {
-          code: "SEARCH_QUERY_MISSING",
-          stage: "search_setup",
-          hint: "Brand name athva product search term enter karo."
-        });
-      }
-      await saveSettings();
-      await chrome.tabs.create({ url: searchUrl, active: true });
-    } catch (error) {
-      render(
-        failureState(error, {
-          code: "OPEN_SEARCH_FAILED",
-          stage: "search_setup",
-          message: "Amazon search open na thayu."
-        })
-      );
-    }
-  });
 
   start.addEventListener("click", async () => {
     try {
@@ -388,12 +328,6 @@
     }
   });
 
-  sourceModes.forEach((input) => {
-    input.addEventListener("change", () => {
-      renderSourceMode();
-      persistSettings();
-    });
-  });
   marketplace.addEventListener("change", () => {
     updateAnalysisNameStatus();
     updateStartAvailability();
@@ -406,7 +340,6 @@
     updateOpenSheetAvailability();
   });
   analysisName.addEventListener("change", persistSettings);
-  searchQuery.addEventListener("change", persistSettings);
   endpoint.addEventListener("input", () => {
     updateStartAvailability();
     updateOpenSheetAvailability();
@@ -427,15 +360,6 @@
     endpoint.value = settings.endpoint || "";
     analysisName.value = settings.analysisName || "";
     marketplace.value = settings.marketplace || "amazon.in";
-    searchQuery.value = settings.searchQuery || "";
-    const sourceMode = ["category", "brand", "product"].includes(settings.sourceMode)
-      ? settings.sourceMode
-      : "category";
-    const sourceInput = sourceModes.find((input) => input.value === sourceMode);
-    if (sourceInput) {
-      sourceInput.checked = true;
-    }
-    renderSourceMode();
     updateEndpointStatus();
     updateAnalysisNameStatus();
     if (!response?.ok) {

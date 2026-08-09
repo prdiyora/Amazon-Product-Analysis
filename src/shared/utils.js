@@ -49,10 +49,6 @@
     }
   }
 
-  function normalizeSearchQuery(value) {
-    return normalizeWhitespace(value).toLowerCase();
-  }
-
   function validateAnalysisName(value) {
     const name = normalizeWhitespace(value);
     if (!name) {
@@ -128,39 +124,6 @@
           state.marketplace || getMarketplaceFromUrl(product.productUrl)
       }))
     };
-  }
-
-  function buildAmazonSearchUrl(marketplace, query) {
-    const normalizedMarketplace = ["amazon.in", "amazon.com"].includes(marketplace)
-      ? marketplace
-      : "amazon.in";
-    const normalizedQuery = normalizeWhitespace(query);
-    if (!normalizedQuery) {
-      return "";
-    }
-    const url = new URL(`https://www.${normalizedMarketplace}/s`);
-    url.searchParams.set("k", normalizedQuery);
-    return url.href;
-  }
-
-  function getAmazonSearchQuery(value) {
-    try {
-      const url = new URL(value);
-      if (!getMarketplaceFromUrl(url.href) || url.pathname !== "/s") {
-        return "";
-      }
-      return normalizeWhitespace(url.searchParams.get("k"));
-    } catch {
-      return "";
-    }
-  }
-
-  function isMatchingAmazonSearch(value, marketplace, query) {
-    return (
-      getMarketplaceFromUrl(value) === marketplace &&
-      normalizeSearchQuery(getAmazonSearchQuery(value)) ===
-        normalizeSearchQuery(query)
-    );
   }
 
   function isAppsScriptEndpoint(value) {
@@ -242,17 +205,13 @@
   const utils = {
     ANALYSIS_NAME_MAX_LENGTH,
     buildAnalysisTabName,
-    buildAmazonSearchUrl,
     buildUploadPayload,
     canonicalProductUrl,
     compareProducts,
-    getAmazonSearchQuery,
     getAsinFromUrl,
     getMarketplaceFromUrl,
     isAppsScriptEndpoint,
-    isMatchingAmazonSearch,
     normalizeWhitespace,
-    normalizeSearchQuery,
     parseCompactCount,
     parseDecimal,
     parseInteger,

@@ -1,14 +1,10 @@
 # Amazon Product Analysis
 
-Aa Chrome Manifest V3 extension Amazon India (`amazon.in`) athva USA (`amazon.com`) par 3 research modes aape chhe: current Category, Brand search ane Product search. Darek run maximum 50 unique non-sponsored products collect kari Google Sheetma `Bought Count` highest ane tie hoy tyare `Review Count` lowest orderma rows save kare chhe.
+Aa Chrome Manifest V3 extension Amazon India (`amazon.in`) athva USA (`amazon.com`) ni current category ke search-results page parthi maximum 50 unique non-sponsored products collect kare chhe. Google Sheetma rows `Bought Count` highest ane tie hoy tyare `Review Count` lowest orderma save thay chhe.
 
-## Research modes
+## Current-page analysis
 
-- `Category`: current Amazon category/listing page scrape kare chhe.
-- `Brand`: brand name (jem ke `Sellbotic`) par Amazon keyword search page open kare chhe ane tena results scrape kare chhe.
-- `Product`: product term (jem ke `oil sprayer`) par Amazon keyword search page open kare chhe ane tena results scrape kare chhe.
-
-Brand ane Product mode Amazon na keyword search results use kare chhe. Amazon relevance pramane bija related products pan batavi shake chhe.
+Amazon par manually category kholo athva brand/product keyword search ane required filters apply karo. Pachhi result page par extension open kari direct `Start analysis` dabavo. Extension koi duplicate search box ke mode-selection vagar active Amazon page ni visible listing ane pagination scrape kare chhe.
 
 ## Dynamic analysis tabs
 
@@ -63,10 +59,9 @@ Code update karya pachi existing Apps Script deploymentma `Deploy > Manage deplo
 1. Popupma `Amazon India (.in)` ke `Amazon USA (.com)` select karo.
 2. Optional `Analysis tab name` enter karo. Blank hoy to live preview default `Amazon Products IN/USA` batavse.
 3. Potani Apps Script `/exec` URL paste karo.
-4. `Category` mode mate Amazon category page open kari `Start analysis` dabavo.
-5. `Brand` athva `Product` mode mate keyword enter kari `Open Amazon search` dabavo.
-6. Amazon result page open thay pachi extension popup fari open kari `Start analysis` dabavo.
-7. Popup close kari shakay; fari open karta current progress dekhase.
+4. Amazon par required category kholo athva brand/product search ane filters set karo.
+5. Aa category/search-results page par extension open kari `Start analysis` dabavo.
+6. Popup close kari shakay; fari open karta current progress dekhase.
 
 Extension pagination follow kari 50 products collect karva try karse. Pages khuti jay to available products j upload thase. Product HTTP fetch blocked/incomplete hoy to extension ek temporary inactive tab open kari parse karse ane pote create karelo tab j close karse.
 

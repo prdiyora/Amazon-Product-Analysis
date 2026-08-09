@@ -1,7 +1,6 @@
 importScripts("shared/messages.js", "shared/errors.js", "shared/utils.js");
 
 const { errors, messages, utils } = globalThis.AZScraper;
-const SOURCE_MODES = new Set(["category", "brand", "product"]);
 const CONTENT_FILES = [
   "src/shared/messages.js",
   "src/shared/errors.js",
@@ -15,7 +14,7 @@ const DEFAULT_STATE = Object.freeze({
   phase: "ready",
   current: 0,
   total: 50,
-  message: "Selected Amazon marketplace ni category page open kari Start dabavo.",
+  message: "Selected marketplace ni Amazon category/search page par Start dabavo.",
   error: "",
   errorDetails: null,
   runId: "",
@@ -23,8 +22,6 @@ const DEFAULT_STATE = Object.freeze({
   marketplace: "amazon.in",
   analysisName: "",
   analysisTabName: "",
-  sourceMode: "category",
-  searchQuery: "",
   products: [],
   summary: null,
   sheetUrl: "",
@@ -80,29 +77,6 @@ function isAmazonPage(value, marketplace) {
   );
 }
 
-function getSourceMode(settings) {
-  return SOURCE_MODES.has(settings.sourceMode) ? settings.sourceMode : "category";
-}
-
-function sourceLabel(sourceMode, searchQuery, fallbackName, fallbackPath) {
-  if (sourceMode === "brand") {
-    return {
-      categoryName: `Brand search: ${searchQuery}`,
-      categoryPath: `Brand search > ${searchQuery}`
-    };
-  }
-  if (sourceMode === "product") {
-    return {
-      categoryName: `Product search: ${searchQuery}`,
-      categoryPath: `Product search > ${searchQuery}`
-    };
-  }
-  return {
-    categoryName: fallbackName,
-    categoryPath: fallbackPath
-  };
-}
-
 async function sendToContent(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
@@ -141,8 +115,6 @@ async function startRun() {
   const analysisValidation = utils.validateOptionalAnalysisName(
     settings.analysisName
   );
-  const sourceMode = getSourceMode(settings);
-  const searchQuery = utils.normalizeWhitespace(settings.searchQuery);
 
   if (!endpoint) {
     throw errors.create("Apps Script Web App URL required chhe.", {
@@ -165,35 +137,14 @@ async function startRun() {
       hint: "Analysis tab name blank rakho athva valid custom name enter karo."
     });
   }
-  if (sourceMode !== "category" && !searchQuery) {
-    throw errors.create("Search keyword required chhe.", {
-      code: "SEARCH_QUERY_MISSING",
-      stage: "setup",
-      hint: "Brand athva product name enter kari pehla Amazon search open karo."
-    });
-  }
-
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !isAmazonPage(tab.url, marketplace)) {
     throw errors.create(
-      `Pehla selected ${marketplace} category ke search listing page open karo.`,
+      `Pehla selected ${marketplace} category athva search results page open karo.`,
       {
         code: "INVALID_AMAZON_TAB",
         stage: "setup",
         hint: `Active tab ${marketplace} listing/search page hovu joie.`
-      }
-    );
-  }
-  if (
-    sourceMode !== "category" &&
-    !utils.isMatchingAmazonSearch(tab.url, marketplace, searchQuery)
-  ) {
-    throw errors.create(
-      `Active Amazon page "${searchQuery}" search result nathi.`,
-      {
-        code: "SEARCH_PAGE_MISMATCH",
-        stage: "setup",
-        hint: "Open Amazon search dabavo, result page open thay pachi popup fari open karo."
       }
     );
   }
@@ -203,10 +154,7 @@ async function startRun() {
     ...DEFAULT_STATE,
     status: "running",
     phase: "listing",
-    message:
-      sourceMode === "category"
-        ? "Amazon category listing collect thai rahyu chhe..."
-        : `${sourceMode === "brand" ? "Brand" : "Product"} search results collect thai rahya chhe...`,
+    message: "Current Amazon page ni listings collect thai rahi chhe...",
     runId,
     sourceTabId: tab.id,
     marketplace,
@@ -215,8 +163,6 @@ async function startRun() {
       analysisValidation.name,
       marketplace
     ),
-    sourceMode,
-    searchQuery,
     startedAt: new Date().toISOString(),
     errorDetails: null
   });
@@ -526,19 +472,13 @@ async function saveBatch(message, isFinal) {
   }
 
   const products = [...message.products].sort(utils.compareProducts);
-  const context = sourceLabel(
-    state.sourceMode,
-    state.searchQuery,
-    message.categoryName,
-    message.categoryPath
-  );
   const nextState = await setState({
     status: isFinal ? "uploading" : "running",
     phase: "upload",
     message: `${products.length} products progressive Sheet save thai rahya chhe...`,
     categoryUrl: message.categoryUrl,
-    categoryName: context.categoryName,
-    categoryPath: context.categoryPath,
+    categoryName: message.categoryName,
+    categoryPath: message.categoryPath,
     products,
     error: "",
     errorDetails: null
@@ -802,7 +742,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   getState().then((state) => {
     if (state.status === "running" && state.sourceTabId === tabId) {
       setFailureState(
-        errors.create("Category tab open rakhi fari Start analysis karo.", {
+        errors.create("Amazon listing tab open rakhi fari Start analysis karo.", {
           code: "SOURCE_TAB_CLOSED",
           stage: "scrape",
           hint: "Analysis complete thay tya sudhi source Amazon tab open rakho."
@@ -824,14 +764,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   getState().then((state) => {
     if (state.status === "running" && state.sourceTabId === tabId) {
       setFailureState(
-        errors.create("Source category page manually refresh/change thayu.", {
+        errors.create("Source Amazon page manually refresh/change thayu.", {
           code: "SOURCE_PAGE_CHANGED",
           stage: "scrape",
           hint:
-            "Run darmiyan original category tab unchanged rakho. Extension pote product tabs open kare te normal chhe."
+            "Run darmiyan original Amazon listing tab unchanged rakho. Extension pote product tabs open kare te normal chhe."
         }),
         {
-          message: "Source Amazon category page change thayu.",
+          message: "Source Amazon page change thayu.",
           code: "SOURCE_PAGE_CHANGED",
           stage: "scrape"
         }
