@@ -40,18 +40,9 @@ main {
 }
 
 .brand-mark {
-  display: grid;
   width: 38px;
   height: 38px;
-  place-items: center;
-  border-radius: 11px 4px 11px 4px;
-  background: #12211d;
-  color: #fff;
-  font-family: Consolas, monospace;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  box-shadow: 4px 4px 0 #ff9900;
+  flex: 0 0 auto;
 }
 
 .eyebrow {

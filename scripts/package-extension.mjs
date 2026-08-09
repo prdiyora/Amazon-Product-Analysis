@@ -23,6 +23,7 @@ archive.file(resolve(root, "manifest.json"), { name: "manifest.json" });
 archive.file(resolve(root, "README.md"), { name: "README.md" });
 archive.directory(resolve(root, "src"), "src");
 archive.directory(resolve(root, "apps-script"), "apps-script");
+archive.directory(resolve(root, "assets"), "assets");
 await archive.finalize();
 await completed;
 

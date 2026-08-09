@@ -49,6 +49,30 @@ a {
   animation: signal-scan 4.8s ease-in-out infinite;
 }
 
+.flow-rail {
+  position: relative;
+}
+
+.flow-node {
+  border: 1px solid #d7e1db;
+  border-radius: 20px 7px 20px 7px;
+}
+
+.flow-node::after {
+  position: absolute;
+  z-index: 2;
+  right: -19px;
+  bottom: 42px;
+  width: 34px;
+  height: 3px;
+  background: linear-gradient(90deg, #3165f5 0 68%, #ff9900 68%);
+  content: "";
+}
+
+.flow-node:last-child::after {
+  display: none;
+}
+
 @keyframes signal-scan {
   0%,
   18% {
@@ -64,6 +88,17 @@ a {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  @media (max-width: 1023px) {
+    .flow-node::after {
+      right: auto;
+      bottom: -10px;
+      left: 32px;
+      width: 3px;
+      height: 18px;
+      background: linear-gradient(180deg, #3165f5 0 68%, #ff9900 68%);
+    }
   }
 
   *,
