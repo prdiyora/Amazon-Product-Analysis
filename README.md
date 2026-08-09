@@ -20,6 +20,8 @@ Custom name aapo to extension selected marketplace pramane suffix add kare chhe:
 
 Same analysis name fari use karsho to same ASIN latest data sathe update thase ane nava ASIN append thase. Custom analysis tabs default `Amazon Products IN/USA` tabs thi alag rahese.
 
+Darek analysis run ni product rows ek consistent light background color use kare chhe. Next run bijo light color use karse, etle same tabma hundreds of sorted rows hoy to pan alag runs visually identify thai shake. Empty separator rows add nathi thata, etle sorting ane ASIN updates safe rahe chhe.
+
 ## Data columns
 
 Run timestamp, category URL/name, full category path, ASIN, title, brand, product URL, price, numeric price, currency, rating, review count, bought text/count, scrape status, error ane marketplace.

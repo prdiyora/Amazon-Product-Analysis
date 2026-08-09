@@ -41,6 +41,12 @@ const LEGACY_HEADERS = [
   "Status",
   "Error"
 ];
+const RUN_ROW_COLORS = [
+  "#FFF4D6",
+  "#EAF2FF",
+  "#E8F7EF",
+  "#F4ECFF"
+];
 
 function configureTargetSpreadsheet() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -269,8 +275,13 @@ function writeMarketplaceProducts_(
   const allRows = existingRows.concat(newRows);
   allRows.sort(compareProductRows_);
   if (allRows.length) {
-    sheet.getRange(2, 1, allRows.length, HEADERS.length)
-      .setValues(allRows);
+    const dataRange = sheet.getRange(2, 1, allRows.length, HEADERS.length);
+    dataRange.setValues(allRows);
+    dataRange.setBackgrounds(
+      allRows.map(function(row) {
+        return Array(HEADERS.length).fill(runColor_(row[0]));
+      })
+    );
   }
   return {
     rowsAdded: newRows.length,
@@ -281,6 +292,15 @@ function writeMarketplaceProducts_(
     sheetGid:
       typeof sheet.getSheetId === "function" ? String(sheet.getSheetId()) : ""
   };
+}
+
+function runColor_(runTimestamp) {
+  const value = String(runTimestamp || "");
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash * 31) + value.charCodeAt(index)) >>> 0;
+  }
+  return RUN_ROW_COLORS[hash % RUN_ROW_COLORS.length];
 }
 
 function sheetUrl_(spreadsheet, sheet) {

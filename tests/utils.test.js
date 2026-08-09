@@ -111,6 +111,7 @@ test("blank optional analysis name default marketplace tabs use kare chhe", () =
 test("progressive ane retry payload run nu locked analysis name preserve kare chhe", () => {
   const state = {
     runId: "run-1",
+    startedAt: "2026-08-09T00:00:00.000Z",
     marketplace: "amazon.in",
     analysisName: "Umbrella Analysis",
     categoryUrl: "https://www.amazon.in/s?k=umbrella",
@@ -131,4 +132,23 @@ test("progressive ane retry payload run nu locked analysis name preserve kare ch
   assert.equal(progressivePayload.analysisName, "Umbrella Analysis");
   assert.equal(retryPayload.analysisName, "Umbrella Analysis");
   assert.deepEqual(retryPayload, progressivePayload);
+});
+
+test("darek progressive batch same run timestamp preserve kare chhe", () => {
+  const state = {
+    runId: "run-2",
+    startedAt: "2026-08-09T08:30:00.000Z",
+    marketplace: "amazon.in",
+    analysisName: "",
+    categoryUrl: "https://www.amazon.in/s?k=umbrella",
+    categoryName: "Umbrella",
+    categoryPath: "Umbrella"
+  };
+  const payload = buildUploadPayload(state, [{
+    asin: "B000000001",
+    productUrl: "https://www.amazon.in/dp/B000000001"
+  }]);
+
+  assert.equal(payload.runTimestamp, state.startedAt);
+  assert.equal(payload.products[0].runTimestamp, state.startedAt);
 });

@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
 class FakeSheet {
   constructor(name = "") {
     this.rows = [];
+    this.backgrounds = [];
     this.name = name;
     this.id = FakeSheet.nextId++;
   }
@@ -50,6 +51,15 @@ class FakeSheet {
           this.rows[targetRow] ||= [];
           row.forEach((value, columnOffset) => {
             this.rows[targetRow][startColumn - 1 + columnOffset] = value;
+          });
+        });
+      },
+      setBackgrounds: (values) => {
+        values.forEach((row, rowOffset) => {
+          const targetRow = startRow - 1 + rowOffset;
+          this.backgrounds[targetRow] ||= [];
+          row.forEach((value, columnOffset) => {
+            this.backgrounds[targetRow][startColumn - 1 + columnOffset] = value;
           });
         });
       }
@@ -194,6 +204,34 @@ test("upsert pachi whole Sheet bought highest ane reviews lowest orderma rahe ch
     sheet.rows.slice(1).map((row) => row[4]),
     ["B000000003", "B000000002", "B000000001"]
   );
+});
+
+test("same run ni rows same light color ane next run alag color use kare chhe", () => {
+  const context = loadAppsScript();
+  const sheet = new FakeSheet();
+  const spreadsheet = {
+    getSheetByName: () => sheet,
+    insertSheet: () => sheet
+  };
+  const first = product("B000000001", "First run A", 100);
+  const second = product("B000000002", "First run B", 200);
+  const third = product("B000000003", "Second run", 300);
+  first.runTimestamp = "2026-08-09T10:00:00.000Z";
+  second.runTimestamp = first.runTimestamp;
+  third.runTimestamp = "2026-08-09T11:00:00.000Z";
+
+  writeProducts(context, spreadsheet, [first, second]);
+  writeProducts(context, spreadsheet, [third]);
+
+  const rowByAsin = new Map(
+    sheet.rows.slice(1).map((row, index) => [row[4], index + 1])
+  );
+  const firstColor = sheet.backgrounds[rowByAsin.get(first.asin)][0];
+  const secondColor = sheet.backgrounds[rowByAsin.get(second.asin)][0];
+  const thirdColor = sheet.backgrounds[rowByAsin.get(third.asin)][0];
+  assert.equal(firstColor, secondColor);
+  assert.notEqual(firstColor, thirdColor);
+  assert.equal(sheet.backgrounds[rowByAsin.get(first.asin)].length, 18);
 });
 
 test("same ASIN India ane USA marketplace mate separate rows rahe chhe", () => {

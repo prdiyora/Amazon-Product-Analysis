@@ -94,7 +94,11 @@
     return `${validation.name} - ${suffix}`;
   }
 
-  function buildUploadPayload(state, products, runTimestamp = new Date().toISOString()) {
+  function buildUploadPayload(
+    state,
+    products,
+    runTimestamp = state.startedAt || new Date().toISOString()
+  ) {
     return {
       runId: state.runId,
       runTimestamp,

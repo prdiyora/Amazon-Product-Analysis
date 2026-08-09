@@ -32,7 +32,7 @@ const features = [
   {
     icon: ListFilter,
     title: "Sort what matters",
-    copy: "Rank products by bought count, then use lower review competition to break ties."
+    copy: "Rank by bought count, break ties with lower review competition, and identify each run by its light row color."
   },
   {
     icon: FileSpreadsheet,
