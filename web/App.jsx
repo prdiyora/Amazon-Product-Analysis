@@ -26,8 +26,8 @@ const products = [
 const features = [
   {
     icon: ScanSearch,
-    title: "Collect the useful signal",
-    copy: "Capture up to 50 non-sponsored products from Amazon India or USA category and search pages."
+    title: "Choose your research path",
+    copy: "Analyze a category page, search a brand name, or search a product term on Amazon India or USA."
   },
   {
     icon: ListFilter,
@@ -36,8 +36,8 @@ const features = [
   },
   {
     icon: FileSpreadsheet,
-    title: "Keep a working sheet",
-    copy: "Send clean product data to separate India and USA tabs in your Google Sheet."
+    title: "Name every analysis",
+    copy: "Route each topic into its own IN or USA tab while every user keeps a separate Google Sheet."
   }
 ];
 
@@ -54,8 +54,8 @@ const steps = [
   },
   {
     label: "Analyze",
-    title: "Open an Amazon category",
-    copy: "Choose India or USA, then start collecting products into the connected Google Sheet."
+    title: "Name and run your research",
+    copy: "Enter a tab name, choose Category, Brand, or Product mode, and start collecting."
   }
 ];
 
@@ -106,6 +106,12 @@ function ExtensionPreview() {
       </div>
 
       <div className="rounded-xl border border-line bg-paper p-3">
+        <div className="mb-2 flex items-center justify-between rounded-md bg-[#e9efff] px-2.5 py-2">
+          <span className="font-mono text-[8px] font-bold uppercase tracking-[0.12em] text-muted">
+            Sheet tab
+          </span>
+          <strong className="text-[10px] text-data">Umbrella Analysis - IN</strong>
+        </div>
         <div className="mb-3 flex items-center justify-between">
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
             Live product signals
@@ -141,7 +147,7 @@ function ExtensionPreview() {
       </div>
 
       <div className="mt-4 flex items-center justify-between rounded-lg bg-ink px-4 py-3 text-white">
-        <span className="text-xs font-bold">Category scan ready</span>
+        <span className="text-xs font-bold">Named analysis ready</span>
         <span className="flex items-center gap-1 font-mono text-[10px] text-[#b9ccc3]">
           amazon.in <ArrowRight size={12} />
         </span>
@@ -196,7 +202,7 @@ export default function App() {
             </div>
 
             <h1 className="max-w-3xl font-display text-[clamp(3.2rem,8vw,6.7rem)] font-black uppercase leading-[0.83] tracking-[-0.075em]">
-              Category pages,
+              Amazon research,
               <span className="relative ml-0 mt-3 block w-fit text-data sm:ml-16">
                 made useful.
                 <svg
@@ -211,8 +217,8 @@ export default function App() {
             </h1>
 
             <p className="mt-10 max-w-xl text-lg leading-8 text-muted sm:text-xl">
-              Collect up to 50 non-sponsored Amazon products, compare demand signals, and save
-              clean results directly to Google Sheets.
+              Research categories, brands, or product terms. Compare up to 50 non-sponsored
+              listings and save every topic in its own named Google Sheet tab.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-5">

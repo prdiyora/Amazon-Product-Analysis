@@ -15,7 +15,15 @@ class FakeSheet {
     return this.rows.length;
   }
 
+  getLastColumn() {
+    return this.rows.reduce((maximum, row) => Math.max(maximum, row.length), 0);
+  }
+
   setFrozenRows() {}
+
+  getName() {
+    return this.name;
+  }
 
   getSheetId() {
     return this.id;
@@ -107,19 +115,27 @@ function product(
   };
 }
 
+function writeProducts(context, spreadsheet, products, analysisName = "Test Analysis") {
+  return context.writeProducts_(spreadsheet, products, analysisName);
+}
+
 test("Apps Script same ASIN update kare ane only new ASIN append kare chhe", () => {
   const context = loadAppsScript();
-  const sheet = new FakeSheet();
+  const sheets = new Map();
   const spreadsheet = {
-    getSheetByName: () => sheet,
-    insertSheet: () => sheet
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      sheets.set(name, sheet);
+      return sheet;
+    }
   };
 
-  const first = context.writeProducts_(spreadsheet, [
+  const first = writeProducts(context, spreadsheet, [
     product("B000000001", "Old title", 100),
     product("B000000002", "Second product", 200)
   ]);
-  const second = context.writeProducts_(spreadsheet, [
+  const second = writeProducts(context, spreadsheet, [
     product("B000000001", "Latest title", 150),
     product("B000000003", "New product", 300)
   ]);
@@ -132,10 +148,12 @@ test("Apps Script same ASIN update kare ane only new ASIN append kare chhe", () 
     { rowsAdded: second.rowsAdded, rowsUpdated: second.rowsUpdated },
     { rowsAdded: 1, rowsUpdated: 1 }
   );
+  const sheet = sheets.get("Test Analysis - IN");
   assert.equal(sheet.rows.length, 4);
   assert.equal(sheet.rows[1][4], "B000000001");
   assert.equal(sheet.rows[1][5], "Latest title");
   assert.equal(sheet.rows[1][9], 150);
+  assert.equal(sheets.get("Amazon Products IN").rows.length, 1);
 });
 
 test("same payloadma duplicate ASIN last value sathe ek j row banave chhe", () => {
@@ -146,7 +164,7 @@ test("same payloadma duplicate ASIN last value sathe ek j row banave chhe", () =
     insertSheet: () => sheet
   };
 
-  const result = context.writeProducts_(spreadsheet, [
+  const result = writeProducts(context, spreadsheet, [
     product("B000000001", "First value", 100),
     product("B000000001", "Last value", 125)
   ]);
@@ -166,7 +184,7 @@ test("upsert pachi whole Sheet bought highest ane reviews lowest orderma rahe ch
     insertSheet: () => sheet
   };
 
-  context.writeProducts_(spreadsheet, [
+  writeProducts(context, spreadsheet, [
     product("B000000001", "Low bought", 100, 100, 2),
     product("B000000002", "High reviews", 200, 1000, 500),
     product("B000000003", "Low reviews", 300, 1000, 20)
@@ -184,25 +202,44 @@ test("same ASIN India ane USA marketplace mate separate rows rahe chhe", () => {
   const spreadsheet = {
     getSheetByName: (name) => sheets.get(name) || null,
     insertSheet: (name) => {
-      const sheet = new FakeSheet();
+      const sheet = new FakeSheet(name);
       sheets.set(name, sheet);
       return sheet;
     }
   };
 
-  const result = context.writeProducts_(spreadsheet, [
-    product("B000000001", "India product", 100, 100, 10, "amazon.in"),
-    product("B000000001", "USA product", 25, 200, 20, "amazon.com")
-  ]);
+  const indiaResult = writeProducts(context, spreadsheet, [
+    product("B000000001", "India product", 100, 100, 10, "amazon.in")
+  ], "Umbrella Analysis");
 
-  assert.equal(result.rowsAdded, 2);
-  assert.equal(result.rowsUpdated, 0);
   assert.deepEqual(
     Array.from(sheets.keys()).sort(),
-    ["Amazon Products IN", "Amazon Products USA"]
+    ["Amazon Products IN", "Umbrella Analysis - IN"]
   );
-  assert.equal(sheets.get("Amazon Products IN").rows[1][17], "amazon.in");
-  assert.equal(sheets.get("Amazon Products USA").rows[1][17], "amazon.com");
+  assert.equal(indiaResult.rowsAdded, 1);
+  assert.equal(
+    sheets.get("Umbrella Analysis - IN").rows[1][17],
+    "amazon.in"
+  );
+
+  const usaResult = writeProducts(context, spreadsheet, [
+    product("B000000001", "USA product", 25, 200, 20, "amazon.com")
+  ], "Umbrella Analysis");
+
+  assert.equal(usaResult.rowsAdded, 1);
+  assert.deepEqual(
+    Array.from(sheets.keys()).sort(),
+    [
+      "Amazon Products IN",
+      "Amazon Products USA",
+      "Umbrella Analysis - IN",
+      "Umbrella Analysis - USA"
+    ]
+  );
+  assert.equal(
+    sheets.get("Umbrella Analysis - USA").rows[1][17],
+    "amazon.com"
+  );
 });
 
 test("existing old schema columns migrate thai ASIN update kare chhe", () => {
@@ -244,111 +281,227 @@ test("existing old schema columns migrate thai ASIN update kare chhe", () => {
       ""
     ]
   ];
-  const sheets = new Map([["Amazon Products IN", legacySheet]]);
+  legacySheet.name = "Legacy Analysis - IN";
+  const sheets = new Map([["Legacy Analysis - IN", legacySheet]]);
   const spreadsheet = {
     getSheetByName: (name) => sheets.get(name) || null,
     insertSheet: (name) => {
-      const sheet = new FakeSheet();
+      const sheet = new FakeSheet(name);
       sheets.set(name, sheet);
       return sheet;
     }
   };
 
-  const result = context.writeProducts_(spreadsheet, [
+  const result = writeProducts(context, spreadsheet, [
     product("B000000001", "Latest India title", 150)
-  ]);
+  ], "Legacy Analysis");
 
   assert.equal(result.rowsAdded, 0);
   assert.equal(result.rowsUpdated, 1);
-  assert.equal(sheets.get("Amazon Products IN").rows[0][3], "Category Path");
-  assert.equal(sheets.get("Amazon Products IN").rows[0][6], "Brand");
-  assert.equal(sheets.get("Amazon Products IN").rows[1][5], "Latest India title");
-  assert.equal(sheets.get("Amazon Products IN").rows[1][17], "amazon.in");
+  assert.equal(sheets.get("Legacy Analysis - IN").rows[0][3], "Category Path");
+  assert.equal(sheets.get("Legacy Analysis - IN").rows[0][6], "Brand");
+  assert.equal(
+    sheets.get("Legacy Analysis - IN").rows[1][5],
+    "Latest India title"
+  );
+  assert.equal(sheets.get("Legacy Analysis - IN").rows[1][17], "amazon.in");
 });
 
-test("manual reset badha old tabs delete kari only IN ane USA banave chhe", () => {
+test("new configuration default IN banave pan USA ke unrelated tab touch nathi kartu", () => {
   const context = loadAppsScript();
-  const sheets = new Map(
-    ["Amazon Products", "Amazon Products IN", "Amazon Products USA", "Notes"]
-      .map((name) => [name, new FakeSheet(name)])
-  );
+  const notes = new FakeSheet("Notes");
+  notes.rows = [["Keep this data"]];
+  const sheets = new Map([["Notes", notes]]);
   const spreadsheet = {
     getSheetByName: (name) => sheets.get(name) || null,
-    getSheets: () => Array.from(sheets.values()),
     insertSheet: (name) => {
       const sheet = new FakeSheet(name);
       sheets.set(name, sheet);
       return sheet;
     },
-    deleteSheet: (sheet) => sheets.delete(sheet.name)
+    getId: () => "configured-sheet-id",
+    getName: () => "Research Sheet"
   };
   context.SpreadsheetApp = {
-    openById: () => spreadsheet
+    getActiveSpreadsheet: () => spreadsheet
   };
 
-  const result = context.resetProductSheets();
+  const result = context.configureTargetSpreadsheet();
 
-  assert.equal(
-    result,
-    "Badha old tabs/data delete thai clean IN ane USA tabs create thaya."
-  );
+  assert.equal(result, "Target Sheet connected: Research Sheet");
   assert.deepEqual(
     Array.from(sheets.keys()).sort(),
-    ["Amazon Products IN", "Amazon Products USA"]
+    ["Amazon Products IN", "Notes"]
   );
   assert.equal(sheets.get("Amazon Products IN").rows[0][0], "Run Timestamp");
-  assert.equal(sheets.get("Amazon Products USA").rows[0][0], "Run Timestamp");
+  assert.equal(sheets.has("Amazon Products USA"), false);
+  assert.equal(sheets.get("Notes").rows[0][0], "Keep this data");
+  assert.equal(
+    context.__propertyValues.get("AZ_SCRAPER_SPREADSHEET_ID"),
+    "configured-sheet-id"
+  );
 });
 
-test("schema auto reset clean IN USA tabs only ek var create kare chhe", () => {
+test("first USA run default USA ane selected custom USA tab j banave chhe", () => {
   const context = loadAppsScript();
-  const sheets = new Map(
-    ["Amazon Products", "Amazon Products IN", "Amazon Products USA", "Notes"]
-      .map((name) => [name, new FakeSheet(name)])
-  );
+  const sheets = new Map();
   const spreadsheet = {
     getSheetByName: (name) => sheets.get(name) || null,
-    getSheets: () => Array.from(sheets.values()),
     insertSheet: (name) => {
       const sheet = new FakeSheet(name);
       sheets.set(name, sheet);
       return sheet;
-    },
-    deleteSheet: (sheet) => sheets.delete(sheet.name)
+    }
   };
+  const indiaDefault = context.ensureDefaultMarketplaceSheet_(
+    spreadsheet,
+    "amazon.in"
+  );
 
-  context.resetOldProductDataOnce_(spreadsheet);
+  writeProducts(context, spreadsheet, [
+    product("B000000001", "USA product", 20, 100, 10, "amazon.com")
+  ], "Umbrella Analysis");
+
   assert.deepEqual(
     Array.from(sheets.keys()).sort(),
-    ["Amazon Products IN", "Amazon Products USA"]
+    [
+      "Amazon Products IN",
+      "Amazon Products USA",
+      "Umbrella Analysis - USA"
+    ]
   );
-
-  sheets.get("Amazon Products IN").rows.push(["kept"]);
-  context.resetOldProductDataOnce_(spreadsheet);
-  assert.equal(sheets.get("Amazon Products IN").rows[1][0], "kept");
-  assert.equal(
-    context.__propertyValues.get("AZ_SCRAPER_SCHEMA_VERSION"),
-    "only-in-usa-tabs-v4"
-  );
+  assert.equal(sheets.has("Umbrella Analysis - IN"), false);
+  assert.equal(indiaDefault.rows.length, 1);
 });
 
 test("Apps Script exact marketplace tab URL return kare chhe", () => {
   const context = loadAppsScript();
-  const sheet = new FakeSheet();
-  sheet.getSheetId = () => 987654321;
+  const sheets = new Map();
   const spreadsheet = {
     getUrl: () => "https://docs.google.com/spreadsheets/d/example/edit",
-    getSheetByName: (name) => name === "Amazon Products USA" ? sheet : null,
-    insertSheet: () => sheet
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      if (name === "Umbrella Analysis - USA") {
+        sheet.getSheetId = () => 987654321;
+      }
+      sheets.set(name, sheet);
+      return sheet;
+    }
   };
 
-  const result = context.writeProducts_(spreadsheet, [
+  const result = writeProducts(context, spreadsheet, [
     product("B000000001", "USA product", 20, 100, 10, "amazon.com")
-  ]);
+  ], "Umbrella Analysis");
 
   assert.equal(
     result.sheetUrl,
     "https://docs.google.com/spreadsheets/d/example/edit#gid=987654321"
+  );
+});
+
+test("incompatible existing custom tab overwrite karvane badle reject thay chhe", () => {
+  const context = loadAppsScript();
+  const conflict = new FakeSheet("Umbrella Analysis - IN");
+  conflict.rows = [["Personal notes"], ["Do not overwrite"]];
+  const sheets = new Map([["Umbrella Analysis - IN", conflict]]);
+  const spreadsheet = {
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      sheets.set(name, sheet);
+      return sheet;
+    }
+  };
+
+  assert.throws(
+    () => writeProducts(context, spreadsheet, [
+      product("B000000001", "India product", 100)
+    ], "Umbrella Analysis"),
+    /compatible analysis headers nathi/
+  );
+  assert.deepEqual(conflict.rows, [["Personal notes"], ["Do not overwrite"]]);
+});
+
+test("analysis tab ma populated extra columns hoy to sorting pela reject thay chhe", () => {
+  const context = loadAppsScript();
+  const sheets = new Map();
+  const spreadsheet = {
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      sheets.set(name, sheet);
+      return sheet;
+    }
+  };
+
+  writeProducts(context, spreadsheet, [
+    product("B000000001", "Original product", 100)
+  ], "Umbrella Analysis");
+  const analysisSheet = sheets.get("Umbrella Analysis - IN");
+  analysisSheet.rows[0][18] = "Private Notes";
+  analysisSheet.rows[1][18] = "Keep with original product";
+  const before = analysisSheet.rows.map((row) => [...row]);
+
+  assert.throws(
+    () => writeProducts(context, spreadsheet, [
+      product("B000000002", "New product", 200)
+    ], "Umbrella Analysis"),
+    /extra data chhe/
+  );
+  assert.deepEqual(analysisSheet.rows, before);
+});
+
+test("partial legacy jeva unrelated headers migrate nathi thata", () => {
+  const context = loadAppsScript();
+  const conflict = new FakeSheet("Umbrella Analysis - IN");
+  conflict.rows = [[
+    "Run Timestamp",
+    "Owner",
+    "Notes",
+    "ASIN",
+    "Custom title",
+    "Private URL"
+  ]];
+  const sheets = new Map([["Umbrella Analysis - IN", conflict]]);
+  const spreadsheet = {
+    getSheetByName: (name) => sheets.get(name) || null,
+    insertSheet: (name) => {
+      const sheet = new FakeSheet(name);
+      sheets.set(name, sheet);
+      return sheet;
+    }
+  };
+  const before = conflict.rows.map((row) => [...row]);
+
+  assert.throws(
+    () => writeProducts(context, spreadsheet, [
+      product("B000000001", "India product", 100)
+    ], "Umbrella Analysis"),
+    /compatible analysis headers nathi/
+  );
+  assert.deepEqual(conflict.rows, before);
+});
+
+test("Apps Script analysis name normalize ane validate kare chhe", () => {
+  const context = loadAppsScript();
+
+  assert.equal(
+    context.analysisSheetName_("  Umbrella   Analysis  ", "amazon.in"),
+    "Umbrella Analysis - IN"
+  );
+  assert.equal(
+    context.analysisSheetName_("Umbrella Analysis", "amazon.com"),
+    "Umbrella Analysis - USA"
+  );
+  assert.throws(() => context.validateAnalysisName_(""), /required/);
+  assert.throws(
+    () => context.validateAnalysisName_("Invalid / Name"),
+    /characters allowed nathi/
+  );
+  assert.throws(
+    () => context.validateAnalysisName_("x".repeat(95)),
+    /maximum 94/
   );
 });
 
@@ -366,6 +519,7 @@ test("server product URLthi marketplace derive kare ane mismatch reject kare chh
   assert.throws(
     () => context.validatePayload_({
       marketplace: "amazon.in",
+      analysisName: "Test Analysis",
       categoryUrl: "https://www.amazon.in/s?k=test",
       products: [usaProduct]
     }),
@@ -377,7 +531,7 @@ test("server product URLthi marketplace derive kare ane mismatch reject kare chh
   );
 });
 
-test("target spreadsheet exact provided IDthi open thay chhe", () => {
+test("configured Script Property IDthi target spreadsheet open thay chhe", () => {
   const context = loadAppsScript();
   let openedId = "";
   const spreadsheet = {};
@@ -387,10 +541,25 @@ test("target spreadsheet exact provided IDthi open thay chhe", () => {
       return spreadsheet;
     }
   };
+  context.__propertyValues.set(
+    "AZ_SCRAPER_SPREADSHEET_ID",
+    "user-specific-sheet-id"
+  );
 
   assert.equal(context.getTargetSpreadsheet_(), spreadsheet);
-  assert.equal(
-    openedId,
-    "12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k"
+  assert.equal(openedId, "user-specific-sheet-id");
+});
+
+test("target spreadsheet configure na hoy to clear error ave chhe", () => {
+  const context = loadAppsScript();
+  context.SpreadsheetApp = {
+    openById: () => {
+      throw new Error("openById call na thavo joie");
+    }
+  };
+
+  assert.throws(
+    () => context.getTargetSpreadsheet_(),
+    /configureTargetSpreadsheet/
   );
 });

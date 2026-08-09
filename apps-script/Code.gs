@@ -1,7 +1,6 @@
-const SPREADSHEET_ID = "12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k";
-const SCHEMA_VERSION = "only-in-usa-tabs-v4";
-const SCHEMA_VERSION_PROPERTY = "AZ_SCRAPER_SCHEMA_VERSION";
-const SHEET_NAMES = {
+const SPREADSHEET_ID_PROPERTY = "AZ_SCRAPER_SPREADSHEET_ID";
+const ANALYSIS_NAME_MAX_LENGTH = 94;
+const DEFAULT_SHEET_NAMES = {
   "amazon.in": "Amazon Products IN",
   "amazon.com": "Amazon Products USA"
 };
@@ -25,38 +24,35 @@ const HEADERS = [
   "Error",
   "Marketplace"
 ];
+const LEGACY_HEADERS = [
+  "Run Timestamp",
+  "Category URL",
+  "Category Name",
+  "ASIN",
+  "Title",
+  "Product URL",
+  "Price",
+  "Price Value",
+  "Currency",
+  "Rating",
+  "Review Count",
+  "Bought Text",
+  "Bought Count",
+  "Status",
+  "Error"
+];
 
-function resetProductSheets() {
-  const spreadsheet = getTargetSpreadsheet_();
-
-  resetSpreadsheet_(spreadsheet);
-  PropertiesService.getScriptProperties()
-    .setProperty(SCHEMA_VERSION_PROPERTY, SCHEMA_VERSION);
-  return "Badha old tabs/data delete thai clean IN ane USA tabs create thaya.";
-}
-
-function resetOldProductDataOnce_(spreadsheet) {
-  const properties = PropertiesService.getScriptProperties();
-  if (properties.getProperty(SCHEMA_VERSION_PROPERTY) === SCHEMA_VERSION) {
-    return;
+function configureTargetSpreadsheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) {
+    throw new Error(
+      "Aa Apps Script Google Sheet mathi Extensions > Apps Script dvara open karo."
+    );
   }
-  resetSpreadsheet_(spreadsheet);
-  properties.setProperty(SCHEMA_VERSION_PROPERTY, SCHEMA_VERSION);
-}
-
-function resetSpreadsheet_(spreadsheet) {
-  const temporaryName = "AZ Scraper Reset " + Date.now();
-  const temporarySheet = spreadsheet.insertSheet(temporaryName);
-  spreadsheet.getSheets().forEach(function(sheet) {
-    if (sheet.getSheetId() !== temporarySheet.getSheetId()) {
-      spreadsheet.deleteSheet(sheet);
-    }
-  });
-  Object.keys(SHEET_NAMES).forEach(function(marketplace) {
-    const sheet = spreadsheet.insertSheet(SHEET_NAMES[marketplace]);
-    ensureHeaders_(sheet, HEADERS);
-  });
-  spreadsheet.deleteSheet(temporarySheet);
+  ensureDefaultMarketplaceSheet_(spreadsheet, "amazon.in");
+  PropertiesService.getScriptProperties()
+    .setProperty(SPREADSHEET_ID_PROPERTY, spreadsheet.getId());
+  return "Target Sheet connected: " + spreadsheet.getName();
 }
 
 function doPost(event) {
@@ -70,8 +66,11 @@ function doPost(event) {
     }
 
     const spreadsheet = getTargetSpreadsheet_();
-    resetOldProductDataOnce_(spreadsheet);
-    const result = writeProducts_(spreadsheet, payload.products);
+    const result = writeProducts_(
+      spreadsheet,
+      payload.products,
+      payload.analysisName
+    );
     return jsonResponse_({
       ok: true,
       rowsAdded: result.rowsAdded,
@@ -90,7 +89,14 @@ function doPost(event) {
 }
 
 function getTargetSpreadsheet_() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
+  const spreadsheetId = PropertiesService.getScriptProperties()
+    .getProperty(SPREADSHEET_ID_PROPERTY);
+  if (!spreadsheetId) {
+    throw new Error(
+      "Target Sheet configured nathi. Apps Script editor mathi configureTargetSpreadsheet function ek var Run karo."
+    );
+  }
+  return SpreadsheetApp.openById(spreadsheetId);
 }
 
 function validatePayload_(payload) {
@@ -108,6 +114,7 @@ function validatePayload_(payload) {
   if (payload.marketplace !== "amazon.in" && payload.marketplace !== "amazon.com") {
     throw new Error("Invalid marketplace.");
   }
+  payload.analysisName = validateAnalysisName_(payload.analysisName);
   const categoryMarketplace = marketplaceFromAmazonUrl_(payload.categoryUrl);
   if (categoryMarketplace !== payload.marketplace) {
     throw new Error("Category URL selected marketplace sathe match nathi thatu.");
@@ -129,7 +136,29 @@ function validatePayload_(payload) {
   });
 }
 
-function writeProducts_(spreadsheet, products) {
+function validateAnalysisName_(value) {
+  const name = String(value || "").replace(/\s+/g, " ").trim();
+  if (!name) {
+    throw new Error("Analysis tab name required chhe.");
+  }
+  if (/[:\\/?*\[\]]/.test(name)) {
+    throw new Error("Analysis name ma : \\ / ? * [ ] characters allowed nathi.");
+  }
+  if (name.length > ANALYSIS_NAME_MAX_LENGTH) {
+    throw new Error(
+      "Analysis name maximum " + ANALYSIS_NAME_MAX_LENGTH +
+      " characters nu hovu joie."
+    );
+  }
+  return name;
+}
+
+function analysisSheetName_(analysisName, marketplace) {
+  const suffix = marketplace === "amazon.com" ? "USA" : "IN";
+  return validateAnalysisName_(analysisName) + " - " + suffix;
+}
+
+function writeProducts_(spreadsheet, products, analysisName) {
   const groups = new Map();
   products.forEach(function(product) {
     const marketplace = marketplaceForProduct_(product);
@@ -144,10 +173,12 @@ function writeProducts_(spreadsheet, products) {
   let spreadsheetUrl = "";
   let sheetGid = "";
   groups.forEach(function(marketplaceProducts, marketplace) {
+    ensureDefaultMarketplaceSheet_(spreadsheet, marketplace);
     const result = writeMarketplaceProducts_(
       spreadsheet,
       marketplace,
-      marketplaceProducts
+      marketplaceProducts,
+      analysisName
     );
     rowsAdded += result.rowsAdded;
     rowsUpdated += result.rowsUpdated;
@@ -164,8 +195,13 @@ function writeProducts_(spreadsheet, products) {
   };
 }
 
-function writeMarketplaceProducts_(spreadsheet, marketplace, products) {
-  const sheetName = SHEET_NAMES[marketplace] || SHEET_NAMES["amazon.in"];
+function writeMarketplaceProducts_(
+  spreadsheet,
+  marketplace,
+  products,
+  analysisName
+) {
+  const sheetName = analysisSheetName_(analysisName, marketplace);
   let sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
@@ -311,18 +347,79 @@ function marketplaceForRow_(row) {
   return /(?:www\.)?amazon\.com\//.test(productUrl) ? "amazon.com" : "amazon.in";
 }
 
+function ensureDefaultMarketplaceSheet_(spreadsheet, marketplace) {
+  const sheetName =
+    DEFAULT_SHEET_NAMES[marketplace] || DEFAULT_SHEET_NAMES["amazon.in"];
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  ensureHeaders_(sheet, HEADERS);
+  return sheet;
+}
+
 function ensureHeaders_(sheet, headers) {
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
     return;
   }
-  const probe = sheet.getRange(1, 1, 1, 6).getValues()[0];
-  if (probe[3] === "ASIN") {
+
+  const currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  const hasCurrentSchema = headers.every(function(header, index) {
+    return currentHeaders[index] === header;
+  });
+  if (hasCurrentSchema) {
+    if (hasPopulatedColumnsAfter_(sheet, headers.length)) {
+      throwSchemaConflict_(sheet, "analysis columns pachi extra data chhe");
+    }
+    sheet.setFrozenRows(1);
+    return;
+  }
+
+  const hasLegacySchema = LEGACY_HEADERS.every(function(header, index) {
+    return currentHeaders[index] === header;
+  });
+  if (hasLegacySchema) {
+    if (hasPopulatedColumnsAfter_(sheet, LEGACY_HEADERS.length)) {
+      throwSchemaConflict_(sheet, "legacy columns pachi extra data chhe");
+    }
     sheet.insertColumnAfter(3);
     sheet.insertColumnAfter(6);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+    return;
   }
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  throwSchemaConflict_(sheet, "compatible analysis headers nathi");
+}
+
+function hasPopulatedColumnsAfter_(sheet, columnCount) {
+  if (typeof sheet.getLastColumn !== "function") {
+    return false;
+  }
+  const lastColumn = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastColumn <= columnCount || lastRow === 0) {
+    return false;
+  }
+  const values = sheet
+    .getRange(1, columnCount + 1, lastRow, lastColumn - columnCount)
+    .getValues();
+  return values.some(function(row) {
+    return row.some(function(value) {
+      return String(value == null ? "" : value).trim() !== "";
+    });
+  });
+}
+
+function throwSchemaConflict_(sheet, reason) {
+  const sheetName =
+    typeof sheet.getName === "function" ? sheet.getName() : "requested";
+  throw new Error(
+    'Sheet tab "' + sheetName + '" ma ' + reason +
+    ". Biju Analysis tab name use karo."
+  );
 }
 
 function safeCell_(value) {

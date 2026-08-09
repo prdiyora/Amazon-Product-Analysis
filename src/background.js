@@ -1,10 +1,7 @@
 importScripts("shared/messages.js", "shared/errors.js", "shared/utils.js");
 
 const { errors, messages, utils } = globalThis.AZScraper;
-const DEFAULT_SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/12JfxDejTWTMsOUlnVANQsnjsIg27UE82_9KuFbeZq-k/edit";
-const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwwVrmMmowX26dTxUct-zJQDZZOma0INDScM7bbhP4vPLMvWS697mBgXwy0yHwShuRI/exec";
+const SOURCE_MODES = new Set(["category", "brand", "product"]);
 const CONTENT_FILES = [
   "src/shared/messages.js",
   "src/shared/errors.js",
@@ -24,15 +21,23 @@ const DEFAULT_STATE = Object.freeze({
   runId: "",
   sourceTabId: null,
   marketplace: "amazon.in",
+  analysisName: "",
+  analysisTabName: "",
+  sourceMode: "category",
+  searchQuery: "",
   products: [],
   summary: null,
-  sheetUrl: DEFAULT_SHEET_URL
+  sheetUrl: "",
+  sheetEndpoint: ""
 });
 const fallbackTabs = new Map();
 
 async function getState() {
   const stored = await chrome.storage.session.get("runState");
-  return stored.runState || { ...DEFAULT_STATE };
+  const state = stored.runState || { ...DEFAULT_STATE };
+  return state.sheetUrl && !state.sheetEndpoint
+    ? { ...state, sheetUrl: "" }
+    : state;
 }
 
 async function setState(patch) {
@@ -75,6 +80,29 @@ function isAmazonPage(value, marketplace) {
   );
 }
 
+function getSourceMode(settings) {
+  return SOURCE_MODES.has(settings.sourceMode) ? settings.sourceMode : "category";
+}
+
+function sourceLabel(sourceMode, searchQuery, fallbackName, fallbackPath) {
+  if (sourceMode === "brand") {
+    return {
+      categoryName: `Brand search: ${searchQuery}`,
+      categoryPath: `Brand search > ${searchQuery}`
+    };
+  }
+  if (sourceMode === "product") {
+    return {
+      categoryName: `Product search: ${searchQuery}`,
+      categoryPath: `Product search > ${searchQuery}`
+    };
+  }
+  return {
+    categoryName: fallbackName,
+    categoryPath: fallbackPath
+  };
+}
+
 async function sendToContent(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
@@ -109,6 +137,40 @@ async function startRun() {
   const marketplace = ["amazon.in", "amazon.com"].includes(settings.marketplace)
     ? settings.marketplace
     : "amazon.in";
+  const endpoint = String(settings.endpoint || "").trim();
+  const analysisValidation = utils.validateAnalysisName(settings.analysisName);
+  const sourceMode = getSourceMode(settings);
+  const searchQuery = utils.normalizeWhitespace(settings.searchQuery);
+
+  if (!endpoint) {
+    throw errors.create("Apps Script Web App URL required chhe.", {
+      code: "APPS_SCRIPT_URL_MISSING",
+      stage: "setup",
+      hint: "Tamari public Apps Script deployment ni /exec URL paste karo."
+    });
+  }
+  if (!utils.isAppsScriptEndpoint(endpoint)) {
+    throw errors.create("Apps Script Web App URL invalid chhe.", {
+      code: "APPS_SCRIPT_URL_INVALID",
+      stage: "setup",
+      hint: "URL https://script.google.com/macros/s/.../exec format ma hovi joie."
+    });
+  }
+  if (!analysisValidation.valid) {
+    throw errors.create(analysisValidation.message, {
+      code: analysisValidation.code,
+      stage: "setup",
+      hint: "Popupma valid Analysis tab name enter karo."
+    });
+  }
+  if (sourceMode !== "category" && !searchQuery) {
+    throw errors.create("Search keyword required chhe.", {
+      code: "SEARCH_QUERY_MISSING",
+      stage: "setup",
+      hint: "Brand athva product name enter kari pehla Amazon search open karo."
+    });
+  }
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !isAmazonPage(tab.url, marketplace)) {
     throw errors.create(
@@ -120,16 +182,39 @@ async function startRun() {
       }
     );
   }
+  if (
+    sourceMode !== "category" &&
+    !utils.isMatchingAmazonSearch(tab.url, marketplace, searchQuery)
+  ) {
+    throw errors.create(
+      `Active Amazon page "${searchQuery}" search result nathi.`,
+      {
+        code: "SEARCH_PAGE_MISMATCH",
+        stage: "setup",
+        hint: "Open Amazon search dabavo, result page open thay pachi popup fari open karo."
+      }
+    );
+  }
 
   const runId = crypto.randomUUID();
   await setState({
     ...DEFAULT_STATE,
     status: "running",
     phase: "listing",
-    message: "Amazon listing collect thai rahyu chhe...",
+    message:
+      sourceMode === "category"
+        ? "Amazon category listing collect thai rahyu chhe..."
+        : `${sourceMode === "brand" ? "Brand" : "Product"} search results collect thai rahya chhe...`,
     runId,
     sourceTabId: tab.id,
     marketplace,
+    analysisName: analysisValidation.name,
+    analysisTabName: utils.buildAnalysisTabName(
+      analysisValidation.name,
+      marketplace
+    ),
+    sourceMode,
+    searchQuery,
     startedAt: new Date().toISOString(),
     errorDetails: null
   });
@@ -285,48 +370,23 @@ async function parseInFallbackTab(product, runId) {
   }
 }
 
-function buildPayload(state, products) {
-  const runTimestamp = new Date().toISOString();
-  return {
-    token: state.token || "",
-    runId: state.runId,
-    runTimestamp,
-    marketplace: state.marketplace,
-    categoryUrl: state.categoryUrl,
-    categoryName: state.categoryName,
-    products: products.map((product) => ({
-      runTimestamp,
-      categoryUrl: state.categoryUrl,
-      categoryName: state.categoryName,
-      categoryPath: state.categoryPath,
-      asin: product.asin || "",
-      title: product.title || "",
-      brand: product.brand || "",
-      productUrl: product.productUrl || "",
-      priceText: product.priceText || "",
-      priceValue: product.priceValue ?? "",
-      currency: product.currency || "",
-      rating: product.rating ?? "",
-      reviewCount: product.reviewCount ?? "",
-      boughtText: product.boughtText || "",
-      boughtCount: product.boughtCount ?? "",
-      status: product.status || "incomplete",
-      error: product.error || "",
-      marketplace:
-        state.marketplace || utils.getMarketplaceFromUrl(product.productUrl)
-    }))
-  };
-}
-
 async function uploadPayload(payload) {
   const settings = (await chrome.storage.local.get("settings")).settings || {};
+  const endpoint = String(settings.endpoint || "").trim();
+  if (!utils.isAppsScriptEndpoint(endpoint)) {
+    throw errors.create("Apps Script Web App URL missing ke invalid chhe.", {
+      code: "APPS_SCRIPT_URL_INVALID",
+      stage: "upload",
+      hint: "Tamari public Apps Script deployment ni /exec URL check karo."
+    });
+  }
   payload.token = settings.token || "";
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   let response;
   try {
-    response = await fetch(APPS_SCRIPT_URL, {
+    response = await fetch(endpoint, {
       method: "POST",
       redirect: "follow",
       signal: controller.signal,
@@ -414,7 +474,7 @@ async function uploadPayload(payload) {
           : "Apps Script execution log ane Sheet access check karo."
     });
   }
-  return result;
+  return { ...result, endpoint };
 }
 
 function batchSummary(products, result) {
@@ -471,13 +531,19 @@ async function saveBatch(message, isFinal) {
   }
 
   const products = [...message.products].sort(utils.compareProducts);
+  const context = sourceLabel(
+    state.sourceMode,
+    state.searchQuery,
+    message.categoryName,
+    message.categoryPath
+  );
   const nextState = await setState({
     status: isFinal ? "uploading" : "running",
     phase: "upload",
     message: `${products.length} products progressive Sheet save thai rahya chhe...`,
     categoryUrl: message.categoryUrl,
-    categoryName: message.categoryName,
-    categoryPath: message.categoryPath,
+    categoryName: context.categoryName,
+    categoryPath: context.categoryPath,
     products,
     error: "",
     errorDetails: null
@@ -485,7 +551,7 @@ async function saveBatch(message, isFinal) {
 
   try {
     const result = products.length
-      ? await uploadPayload(buildPayload(nextState, products))
+      ? await uploadPayload(utils.buildUploadPayload(nextState, products))
       : { rowsAdded: 0, rowsUpdated: 0, sheetUrl: state.sheetUrl || "" };
     const summary = mergeSummary(
       state.summary,
@@ -503,10 +569,11 @@ async function saveBatch(message, isFinal) {
       status: isFinal ? "complete" : "running",
       phase: isFinal ? "complete" : "products",
       message: isFinal
-        ? summaryMessage(summary)
+        ? `${summaryMessage(summary)} Saved to ${state.analysisTabName}.`
         : `${summary.processed} products Sheetma safely save thaya.`,
       summary,
       sheetUrl,
+      sheetEndpoint: result.endpoint || state.sheetEndpoint || "",
       products: [],
       error: "",
       errorDetails: null
@@ -545,7 +612,9 @@ async function retryUpload() {
     errorDetails: null
   });
   try {
-    const result = await uploadPayload(buildPayload(state, state.products));
+    const result = await uploadPayload(
+      utils.buildUploadPayload(state, state.products)
+    );
     const summary = mergeSummary(
       state.summary,
       batchSummary(state.products, result)
@@ -556,6 +625,7 @@ async function retryUpload() {
       message: summaryMessage(summary),
       summary,
       sheetUrl: resultSheetUrl(result, state.sheetUrl || ""),
+      sheetEndpoint: result.endpoint || state.sheetEndpoint || "",
       products: [],
       error: "",
       errorDetails: null

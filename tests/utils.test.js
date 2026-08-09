@@ -1,11 +1,19 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  ANALYSIS_NAME_MAX_LENGTH,
+  buildAnalysisTabName,
+  buildAmazonSearchUrl,
+  buildUploadPayload,
   canonicalProductUrl,
   compareProducts,
+  getAmazonSearchQuery,
   getMarketplaceFromUrl,
+  isAppsScriptEndpoint,
+  isMatchingAmazonSearch,
   parseCompactCount,
-  parseInteger
+  parseInteger,
+  validateAnalysisName
 } = require("../src/shared/utils.js");
 
 test("India ane USA product URLs marketplace pramane canonical thay chhe", () => {
@@ -43,4 +51,93 @@ test("products bought descending ane tie par reviews ascending sort thay chhe", 
 
   products.sort(compareProducts);
   assert.deepEqual(products.map((product) => product.asin), ["A", "C", "B", "D"]);
+});
+
+test("brand ane product keyword mate marketplace search URL bane chhe", () => {
+  assert.equal(
+    buildAmazonSearchUrl("amazon.in", "  Sellbotic  "),
+    "https://www.amazon.in/s?k=Sellbotic"
+  );
+  assert.equal(
+    buildAmazonSearchUrl("amazon.com", "oil sprayer"),
+    "https://www.amazon.com/s?k=oil+sprayer"
+  );
+  assert.equal(buildAmazonSearchUrl("amazon.in", "   "), "");
+});
+
+test("Amazon search URL query read ane match thay chhe", () => {
+  const url =
+    "https://www.amazon.in/s?k=sellbotic&crid=2JTR50P5YDIN6&ref=nb_sb_noss_2";
+  assert.equal(getAmazonSearchQuery(url), "sellbotic");
+  assert.equal(isMatchingAmazonSearch(url, "amazon.in", "Sellbotic"), true);
+  assert.equal(isMatchingAmazonSearch(url, "amazon.com", "Sellbotic"), false);
+  assert.equal(isMatchingAmazonSearch("https://www.amazon.in/dp/B000000001", "amazon.in", "Sellbotic"), false);
+});
+
+test("Apps Script exec endpoint validate thay chhe", () => {
+  assert.equal(
+    isAppsScriptEndpoint("https://script.google.com/macros/s/abc123/exec"),
+    true
+  );
+  assert.equal(
+    isAppsScriptEndpoint("https://script.google.com/macros/s/abc123/dev"),
+    false
+  );
+  assert.equal(isAppsScriptEndpoint("https://example.com/macros/s/abc123/exec"), false);
+});
+
+test("analysis name normalize thai marketplace suffix sathe tab name bane chhe", () => {
+  assert.deepEqual(validateAnalysisName("  Umbrella   Analysis  "), {
+    valid: true,
+    name: "Umbrella Analysis"
+  });
+  assert.equal(
+    buildAnalysisTabName("Umbrella Analysis", "amazon.in"),
+    "Umbrella Analysis - IN"
+  );
+  assert.equal(
+    buildAnalysisTabName("Umbrella Analysis", "amazon.com"),
+    "Umbrella Analysis - USA"
+  );
+});
+
+test("analysis name invalid input reject kare chhe", () => {
+  assert.equal(validateAnalysisName("  ").code, "ANALYSIS_NAME_MISSING");
+  assert.equal(
+    validateAnalysisName("Umbrella / Monsoon").code,
+    "ANALYSIS_NAME_INVALID_CHARACTERS"
+  );
+  assert.equal(
+    validateAnalysisName("x".repeat(ANALYSIS_NAME_MAX_LENGTH + 1)).code,
+    "ANALYSIS_NAME_TOO_LONG"
+  );
+  assert.equal(
+    buildAnalysisTabName("Invalid [Name]", "amazon.in"),
+    ""
+  );
+});
+
+test("progressive ane retry payload run nu locked analysis name preserve kare chhe", () => {
+  const state = {
+    runId: "run-1",
+    marketplace: "amazon.in",
+    analysisName: "Umbrella Analysis",
+    categoryUrl: "https://www.amazon.in/s?k=umbrella",
+    categoryName: "Product search: umbrella",
+    categoryPath: "Product search > umbrella"
+  };
+  const products = [{
+    asin: "B000000001",
+    title: "Umbrella",
+    productUrl: "https://www.amazon.in/dp/B000000001",
+    status: "ok"
+  }];
+  const timestamp = "2026-08-09T00:00:00.000Z";
+
+  const progressivePayload = buildUploadPayload(state, products, timestamp);
+  const retryPayload = buildUploadPayload(state, products, timestamp);
+
+  assert.equal(progressivePayload.analysisName, "Umbrella Analysis");
+  assert.equal(retryPayload.analysisName, "Umbrella Analysis");
+  assert.deepEqual(retryPayload, progressivePayload);
 });
