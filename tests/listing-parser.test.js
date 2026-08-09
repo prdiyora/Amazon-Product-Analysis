@@ -12,7 +12,8 @@ test("listing parser sponsored products exclude kari next page resolve kare chhe
   const { document } = parseHTML(html);
   const result = parseListing(document, "https://www.amazon.in/s?k=mobiles");
 
-  assert.equal(result.categoryName, "Mobiles");
+  assert.equal(result.categoryName, "Search: mobiles");
+  assert.equal(result.categoryPath, "Amazon Search›mobiles");
   assert.deepEqual(
     result.products.map((product) => product.asin),
     ["B000000001", "B000000003"]
@@ -59,4 +60,26 @@ test("full category breadcrumb Any Department vagar leaf sathe parse thay chhe",
     result.categoryPath,
     "Home & Kitchen›Kitchen & Dining›Kitchen Tools›Oil Preparation & Dispensers›Oil Sprayers"
   );
+});
+
+test("Subtotal heading search keyword ne Category context tarike replace kare chhe", () => {
+  const { document } = parseHTML(`
+    <html>
+      <head><title>Amazon.in : sellbotic</title></head>
+      <body>
+        <h1>Subtotal</h1>
+        <div data-component-type="s-search-result" data-asin="B000000001">
+          <h2><a href="/Example/dp/B000000001">Example</a></h2>
+        </div>
+      </body>
+    </html>
+  `);
+
+  const result = parseListing(
+    document,
+    "https://www.amazon.in/s?k=sellbotic&ref=nb_sb_noss"
+  );
+
+  assert.equal(result.categoryName, "Search: sellbotic");
+  assert.equal(result.categoryPath, "Amazon Search›sellbotic");
 });

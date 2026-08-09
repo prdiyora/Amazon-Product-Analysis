@@ -27,6 +27,7 @@ Darek analysis run ni product rows ek consistent light background color use kare
 Run timestamp, category URL/name, full category path, ASIN, title, brand, product URL, price, numeric price, currency, rating, review count, bought text/count, scrape status, error ane marketplace.
 
 `Category Path` breadcrumb formatma save thase, jem ke `Home & Kitchen›Kitchen & Dining›Kitchen Tools›Oil Preparation & Dispensers›Oil Sprayers`.
+Amazon search page mate `Category Name` ma `Search: keyword` ane `Category Path` ma `Amazon Search›keyword` save thase; Amazon na unrelated `Subtotal` headings ignore thase.
 
 `Bought Count` Amazon par display thata approximate text (jem ke `1K+ bought in past month`) par based chhe. Amazon aa value darek product mate batavtu nathi; eva product sortingma niche aavse.
 

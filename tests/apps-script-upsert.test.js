@@ -590,6 +590,26 @@ test("server product URLthi marketplace derive kare ane mismatch reject kare chh
   );
 });
 
+test("server Subtotal category metadata search keyword thi repair kare chhe", () => {
+  const context = loadAppsScript();
+  const item = product("B000000001", "Search product", 100);
+  item.categoryUrl =
+    "https://www.amazon.in/s?k=oil+sprayer&ref=nb_sb_noss";
+  item.categoryName = "Subtotal";
+  item.categoryPath = "Subtotal";
+  const payload = {
+    marketplace: "amazon.in",
+    analysisName: "",
+    categoryUrl: item.categoryUrl,
+    products: [item]
+  };
+
+  context.validatePayload_(payload);
+
+  assert.equal(item.categoryName, "Search: oil sprayer");
+  assert.equal(item.categoryPath, "Amazon Search›oil sprayer");
+});
+
 test("configured Script Property IDthi target spreadsheet open thay chhe", () => {
   const context = loadAppsScript();
   let openedId = "";

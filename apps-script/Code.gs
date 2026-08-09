@@ -134,7 +134,40 @@ function validatePayload_(payload) {
       );
     }
     product.marketplace = urlMarketplace;
+    normalizeCategoryContext_(product, payload.categoryUrl);
   });
+}
+
+function normalizeCategoryContext_(product, fallbackCategoryUrl) {
+  const categoryUrl = String(
+    product.categoryUrl || fallbackCategoryUrl || ""
+  );
+  const query = searchQueryFromAmazonUrl_(categoryUrl);
+  const categoryName = String(product.categoryName || "").trim();
+  const categoryPath = String(product.categoryPath || "").trim();
+  const fallbackName = query ? "Search: " + query : "Amazon Listing";
+  const fallbackPath = query ? "Amazon Search›" + query : fallbackName;
+
+  if (!categoryName || /^subtotal$/i.test(categoryName)) {
+    product.categoryName = fallbackName;
+  }
+  if (!categoryPath || /^subtotal$/i.test(categoryPath)) {
+    product.categoryPath = fallbackPath;
+  }
+}
+
+function searchQueryFromAmazonUrl_(value) {
+  const match = String(value || "").match(/[?&]k=([^&#]+)/i);
+  if (!match) {
+    return "";
+  }
+  try {
+    return decodeURIComponent(match[1].replace(/\+/g, " "))
+      .replace(/\s+/g, " ")
+      .trim();
+  } catch (error) {
+    return match[1].replace(/\+/g, " ").replace(/\s+/g, " ").trim();
+  }
 }
 
 function validateAnalysisName_(value) {

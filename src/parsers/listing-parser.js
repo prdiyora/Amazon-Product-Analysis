@@ -36,24 +36,76 @@
     return null;
   }
 
-  function getCategoryPath(document, categoryName) {
+  function isMeaningfulCategoryText(value) {
+    const text = utils.normalizeWhitespace(value);
+    return Boolean(
+      text &&
+      !/^(?:subtotal|total|results?|search results?|sponsored|featured|top picks?|see all)$/i.test(
+        text
+      )
+    );
+  }
+
+  function getBreadcrumbItems(document) {
     const container = document.querySelector(
       "#wayfinding-breadcrumbs_feature_div, #wayfinding-breadcrumbs_container, .a-breadcrumb"
     );
-    const items = container
+    return container
       ? Array.from(container.querySelectorAll("li"))
           .map((item) =>
             utils.normalizeWhitespace(item.textContent).replace(/^›|›$/g, "").trim()
           )
-          .filter((item) => item && !/^any department$/i.test(item))
+          .filter(
+            (item) =>
+              isMeaningfulCategoryText(item) &&
+              !/^any department$/i.test(item)
+          )
       : [];
+  }
+
+  function getSearchQuery(pageUrl) {
+    try {
+      const url = new URL(pageUrl);
+      return url.pathname === "/s"
+        ? utils.normalizeWhitespace(url.searchParams.get("k"))
+        : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function getListingContext(document, pageUrl) {
+    const searchQuery = getSearchQuery(pageUrl);
+    if (searchQuery) {
+      return {
+        categoryName: `Search: ${searchQuery}`,
+        categoryPath: `Amazon Search›${searchQuery}`
+      };
+    }
+
+    const items = getBreadcrumbItems(document);
+    const heading = Array.from(document.querySelectorAll("h1"))
+      .map((element) => utils.normalizeWhitespace(element.textContent))
+      .find(isMeaningfulCategoryText);
+    const pageTitle = utils
+      .normalizeWhitespace(document.title)
+      .replace(/\s*[-|]\s*Amazon\.(?:in|com).*$/i, "")
+      .trim();
+    const categoryName =
+      heading ||
+      items[items.length - 1] ||
+      (isMeaningfulCategoryText(pageTitle) ? pageTitle : "") ||
+      "Amazon Listing";
     if (
       categoryName &&
       !items.some((item) => item.toLowerCase() === categoryName.toLowerCase())
     ) {
       items.push(categoryName);
     }
-    return items.join("›") || categoryName;
+    return {
+      categoryName,
+      categoryPath: items.join("›") || categoryName
+    };
   }
 
   function parseListing(document, pageUrl) {
@@ -96,10 +148,7 @@
     const nextUrl = nextElement
       ? utils.toAmazonUrl(nextElement.getAttribute("href"), pageUrl)
       : "";
-    const categoryName =
-      utils.normalizeWhitespace(document.querySelector("h1")?.textContent) ||
-      utils.normalizeWhitespace(document.title);
-    const categoryPath = getCategoryPath(document, categoryName);
+    const { categoryName, categoryPath } = getListingContext(document, pageUrl);
 
     return { products, nextUrl, categoryName, categoryPath };
   }
